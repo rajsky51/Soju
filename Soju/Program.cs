@@ -2,9 +2,8 @@
 using NBitcoin;
 using WabiSabi.Crypto.Randomness;
 using Soju;
+using Soju.Analysis;
 using Soju.Extensions;
-
-public class CoinjoinJSON
 
 var cjSkipFactors = CoinjoinSkipFactors.NoSkip;
 ScriptType[] allowedScriptTypes = [ScriptType.Taproot, ScriptType.P2WPKH];
@@ -25,6 +24,8 @@ for (int i = 0; i < 5; i++)
     wallet.AddCoins(randomCoins);
     wallets.Add(wallet);
 }
+
+BlockchainAnalyzer bcAnalyzer = new();
 
 for (int i = 0; i < 10; i++) 
 {
@@ -53,17 +54,5 @@ for (int i = 0; i < 10; i++)
     Mixer mixer = new(selectionParams, roundParams);
 
     var result = mixer.CompleteMix(wallets);
-
-    var coinjoins = new Dictionary<string, object>
-    {
-        [result.RoundId.ToString()] = new
-        {
-            txid = result.Transaction.Id,
-            inputs = new Dictionary<string, object>
-            foreach (var input in result.Transaction.Inputs)
-            {
-                inputs.add(input);
-            }
-        }
-    };
+    var tx = result.Transaction;
 }

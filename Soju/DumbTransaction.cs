@@ -7,12 +7,15 @@ namespace Soju;
 public class DumbTransaction : IEquatable<DumbTransaction>
 {
     public uint256 Id;
+    public bool IsWasabi2Cj;
     public Dictionary<WalletId, HashSet<DumbCoin>> Inputs;
     public Dictionary<WalletId, HashSet<DumbCoin>> Outputs;
 
     public DumbTransaction(Dictionary<WalletId, HashSet<DumbCoin>>? inputs, Dictionary<WalletId, HashSet<DumbCoin>>? outputs) 
     {
         Id = RandomUtils.GetUInt256();
+
+        IsWasabi2Cj = false;
 
         if (inputs is not null) Inputs = new Dictionary<WalletId, HashSet<DumbCoin>>(inputs);
         else Inputs = new Dictionary<WalletId, HashSet<DumbCoin>>();
@@ -21,9 +24,30 @@ public class DumbTransaction : IEquatable<DumbTransaction>
         else Outputs = new Dictionary<WalletId, HashSet<DumbCoin>>();
     }
 
-    public bool TryAddInput(WalletId walletId, DumbCoin input) => Inputs[walletId].Add(input);
+    public bool TryAddInput(WalletId walletId, DumbCoin input)
+    {
+        if (!Inputs.TryGetValue(walletId, out var coins)) 
+        {
+            coins = [];
+            Inputs[walletId] = coins;
+        }
+        return coins.Add(input);
+    }
 
-    public bool TryAddOutput(WalletId walletId, DumbCoin output) => Outputs[walletId].Add(output);
+    public bool TryAddOutput(WalletId walletId, DumbCoin output)
+    {
+        if (!Outputs.TryGetValue(walletId, out var coins)) 
+        {
+            coins = [];
+            Outputs[walletId] = coins;
+        }
+        return coins.Add(output);
+    }
+
+    public uint256 GetHash()
+    {
+        return Id;
+    }
 
     public override int GetHashCode()
     {

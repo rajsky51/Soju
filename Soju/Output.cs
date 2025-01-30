@@ -1,5 +1,4 @@
 using NBitcoin;
-// using WalletWasabi.Extensions;
 
 namespace Soju;
 

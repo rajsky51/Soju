@@ -1,4 +1,6 @@
+using NBitcoin;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Soju.Analysis;
 
@@ -18,14 +20,14 @@ public class BlockchainAnalyzer
 
     public void Analyze(DumbTransaction tx)
     {
-        foreach (var walletId in tx.Inputs.Keys)
+        foreach (var walletId in tx.Outputs.Keys)
         {
             AnalyzeCoinjoinWalletInputs(tx, walletId, out StartingAnonScores startingAnonScores);
             AnalyzeCoinjoinWalletOutputs(tx, walletId, startingAnonScores);
 
             double startingOutputAnonset = startingAnonScores.WeightedAverage.standard;
 
-            AdjustWalletInputs(tx, startingOutputAnonset);
+            //AdjustWalletInputs(tx, walletId, startingOutputAnonset);
         }
     }
 
@@ -117,17 +119,23 @@ public class BlockchainAnalyzer
 		var foreignInputCount = foreignInputs.Count;
 		long? maxAmountWeightedAverageIsApplicableFor = null;
 
-		foreach (var virtualOutput in tx.WalletVirtualOutputs)
+		var walletVirtualOutputs = tx.Outputs[walletId].Select(x => new WalletVirtualOutput(x.KeyId, (HashSet<DumbCoin>)[x]));
+		var foreignVirtualOutputs = tx.Outputs
+			.Where(x => x.Key != walletId)
+			.SelectMany(x => x.Value)
+			.Select(x => new ForeignVirtualOutput(x.KeyId, x.Amount, (HashSet<OutPoint>)[x.OutPoint]));
+
+		foreach (var virtualOutput in walletVirtualOutputs)
 		{
 			(double standard, double sanctioned) startingOutputAnonset;
 
 			// If the virtual output has a nonempty anonymity set
-			if (!tx.ForeignVirtualOutputs.Any(x => x.Amount == virtualOutput.Amount))
+			if (!foreignVirtualOutputs.Any(x => x.Amount == virtualOutput.Amount))
 			{
 				// When WW2 denom output isn't too large, then it's not change.
 				if (tx.IsWasabi2Cj is true && StdDenoms.Contains(virtualOutput.Amount.Satoshi))
 				{
-					if (maxAmountWeightedAverageIsApplicableFor is null && !TryGetLargestEqualForeignOutputAmount(tx, out maxAmountWeightedAverageIsApplicableFor))
+					if (maxAmountWeightedAverageIsApplicableFor is null && !TryGetLargestEqualForeignOutputAmount(foreignVirtualOutputs, out maxAmountWeightedAverageIsApplicableFor))
 					{
 						maxAmountWeightedAverageIsApplicableFor = Constants.MaximumNumberOfSatoshis;
 					}
@@ -148,46 +156,52 @@ public class BlockchainAnalyzer
 
 			// Anonset gain cannot be larger than others' input count.
 			// Picking randomly an output would make our anonset: total/ours.
-			double anonymityGain = Math.Min(CoinjoinAnalyzer.ComputeAnonymityContribution(virtualOutput.Coins.First()), foreignInputCount);
+			double anonymityGain = Math.Min(CoinjoinAnalyzer.ComputeAnonymityContribution(virtualOutput.Coins.First(), walletId), foreignInputCount);
 
 			// Account for the inherited anonymity set size from the inputs in the
 			// anonymity set size estimate.
 			double anonset = new[] { startingOutputAnonset.sanctioned + anonymityGain, anonymityGain + 1, startingOutputAnonset.standard }.Max();
 
-			foreach (var hdPubKey in virtualOutput.Coins.Select(x => x.HdPubKey).ToHashSet())
+			foreach (var coin in virtualOutput.Coins)
 			{
-				uint256 txid = tx.GetHash();
-				if (hdPubKey.AnonymitySet == HdPubKey.DefaultHighAnonymitySet)
-				{
-					// If the new coin's HD pubkey haven't been used yet
-					// then its anonset haven't been set yet.
-					// In that case the acquired anonset does not have to be intersected with the default anonset,
-					// so this coin gets the acquired anonset.
-					hdPubKey.SetAnonymitySet(anonset, txid);
-				}
-				else if (tx.WalletVirtualInputs.Select(x => x.HdPubKey).Contains(hdPubKey))
-				{
-					// If it's a reuse of an input's pubkey, then intersection punishment is senseless.
-					hdPubKey.SetAnonymitySet(startingOutputAnonset.sanctioned, txid);
-				}
-				else if (hdPubKey.HistoricalAnonSet.ContainsKey(txid))
-				{
-					// If we already processed this transaction for this script
-					// then we'll go with normal processing.
-					// It may be a duplicated processing or new information arrived (like other wallet loaded)
-					// If there are more anonsets already
-					// then it's address reuse that we have already punished so leave it alone.
-					if (hdPubKey.HistoricalAnonSet.Count == 1)
-					{
-						hdPubKey.SetAnonymitySet(anonset, txid);
-					}
-				}
-				else
-				{
-					// It's address reuse.
-					hdPubKey.SetAnonymitySet(Intersect(new[] { anonset, hdPubKey.AnonymitySet }), txid);
-				}
+				coin.AnonymitySet = anonset;
 			}
 		}
 	}
+
+	private static bool TryGetLargestEqualForeignOutputAmount(IEnumerable<ForeignVirtualOutput> foreignVirtualOutputs, [NotNullWhen(true)] out long? largestEqualForeignOutputAmount)
+	{
+		var found = foreignVirtualOutputs
+			.Select(x => x.Amount.Satoshi)
+			.GroupBy(x => x)
+			.ToDictionary(x => x.Key, y => y.Count())
+			.Select(x => (x.Key, x.Value))
+			.Where(x => x.Value > 1)
+			.FirstOrDefault().Key;
+
+		largestEqualForeignOutputAmount = found == default ? null : found;
+
+		return largestEqualForeignOutputAmount is not null;
+	}
+
+	/// <summary>
+	/// Adjusts the anonset of the inputs to the newly calculated output anonsets.
+	/// </summary>
+	// private static void AdjustWalletInputs(DumbTransaction tx, WalletId walletId, double startingOutputAnonset)
+	// {
+	// 	// Sanity check.
+	// 	if (tx.WalletOutputs.Count == 0)
+	// 	{
+	// 		return;
+	// 	}
+
+	// 	var smallestOutputAnonset = tx.WalletOutputs.Min(x => x.HdPubKey.AnonymitySet);
+	// 	if (smallestOutputAnonset < startingOutputAnonset)
+	// 	{
+	// 		foreach (var key in tx.WalletVirtualInputs.Select(x => x.HdPubKey))
+	// 		{
+	// 			key.SetAnonymitySet(smallestOutputAnonset);
+	// 		}
+	// 	}
+	// }
 }

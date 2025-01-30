@@ -17,8 +17,9 @@ public class Mixer
     {
         var roundId = RandomUtils.GetUInt256();
         var transaction = new DumbTransaction(null, null);
+        transaction.IsWasabi2Cj = true;
 
-        // Select intput coins from wallets
+        // Select input coins from wallets
         foreach (var wallet in wallets) 
         {
             var coinCandidates = wallet.GetCoinJoinCoinCandidates();
@@ -40,15 +41,16 @@ public class Mixer
             var othersInputsEffectiveValues = transaction.Inputs.Where(dictEntry => dictEntry.Key != wallet.WalletId).SelectMany(dictEntry => dictEntry.Value.Select(coin => coin.EffectiveValue(RoundParams.MiningFeeRate)));
             var availableVsize = transaction.Inputs[wallet.WalletId].Sum(coin => RoundParams.MaxVsizeCredentialValue - coin.ScriptType.EstimateInputVsize());
 
-            var myOutputs = wallet.OutputProvider.GetOutputs(RoundParams, myInputsEffectiveValues, othersInputsEffectiveValues, availableVsize);
+            var outputs = wallet.OutputProvider.GetOutputs(RoundParams, myInputsEffectiveValues, othersInputsEffectiveValues, availableVsize);
 
-            // Add outputs as output coins to the transaction and as new coins to the wallet and remove old coins
+            // Add outputs as output coins to the transaction
             HashSet<DumbCoin> newCoins = [];
-            foreach (var output in myOutputs.ToList())
+            foreach (var output in outputs.ToList())
             {
                 transaction.TryAddOutput(wallet.WalletId, OutputToCoin(output, transaction, outputIndex));
                 outputIndex++;
             }
+            // Remove old coins and add new coins to the wallet
             wallet.RemoveCoins(transaction.Inputs[wallet.WalletId]);
             wallet.AddCoins(newCoins);
         }
