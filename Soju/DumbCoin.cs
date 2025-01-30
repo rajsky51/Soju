@@ -21,6 +21,7 @@ public class DumbCoin : ISmartCoin, IEquatable<DumbCoin>
         ScriptType = scriptType;
         AnonymitySet = anonymitySet;
         TransactionId = Transaction.Id;
+		KeyId = RandomUtils.GetBytes(32);
 		Index = index;
         IsSufficientlyDistancedFromExternalKeys = true;
 

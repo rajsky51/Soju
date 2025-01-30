@@ -25,7 +25,7 @@ for (int i = 0; i < 5; i++)
     wallets.Add(wallet);
 }
 
-BlockchainAnalyzer bcAnalyzer = new();
+JSONBuilder jsonBuilder = new(wallets, "    "); // indentation is 4 spaces
 
 for (int i = 0; i < 10; i++) 
 {
@@ -54,5 +54,7 @@ for (int i = 0; i < 10; i++)
     Mixer mixer = new(selectionParams, roundParams);
 
     var result = mixer.CompleteMix(wallets);
-    var tx = result.Transaction;
+
+    string coinjoinJSON = jsonBuilder.CoinjoinResultsToJSON([result], 0) + "\n";
+    Console.WriteLine(coinjoinJSON);
 }
