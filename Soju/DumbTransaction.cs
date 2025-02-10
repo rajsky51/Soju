@@ -1,6 +1,7 @@
 using NBitcoin;
 using NBitcoin.Crypto;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace Soju;
 
@@ -86,5 +87,39 @@ public class DumbTransaction : IEquatable<DumbTransaction>
     public static bool operator !=(DumbTransaction? x, DumbTransaction? y) 
     {
         return !(x == y);
+    }
+
+    public override string ToString()
+    {
+        StringBuilder sb = new();
+
+        sb.Append($"id: {Id}\n");
+        sb.Append($"is Wasabi 2 Coinjoin: {(IsWasabi2Cj ? "yes" : "no")}\n");
+        if (Inputs != null) 
+        {
+            sb.Append("Inputs\n");
+            foreach (var walletInput in Inputs)
+            {
+                sb.Append($"wallet id: {walletInput.Key}\n");
+                foreach (var input in walletInput.Value) 
+                {
+                    sb.Append($"{input}\n");
+                }
+            }
+        }
+        if (Outputs != null)
+        {
+            sb.Append("Outputs\n");
+            foreach (var walletOutput in Outputs)
+            {
+                sb.Append($"wallet id: {walletOutput.Key}\n");
+                foreach (var output in walletOutput.Value) 
+                {
+                    sb.Append($"{output}\n");
+                }
+            }
+        }
+
+        return sb.ToString();
     }
 }

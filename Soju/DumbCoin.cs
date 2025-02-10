@@ -1,4 +1,5 @@
 using NBitcoin;
+using System.Text;
 
 namespace Soju;
 
@@ -27,6 +28,21 @@ public class DumbCoin : ISmartCoin, IEquatable<DumbCoin>
 
 		OutPoint = new OutPoint(TransactionId, Index);
     }
+
+	public override string ToString() 
+	{
+		StringBuilder sb = new();
+
+		sb.Append($"amount: {Amount}\n");
+		sb.Append($"script type: {ScriptType}\n");
+		sb.Append($"anonset: {AnonymitySet}\n");
+		sb.Append($"txid: {TransactionId}\n");
+		sb.Append($"index: {Index}\n");
+		sb.Append($"outpoint: {OutPoint}\n");
+		sb.Append($"key: {KeyId}\n");
+
+		return sb.ToString();
+	}
 
     #region EqualityAndComparison
 
