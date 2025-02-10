@@ -9,7 +9,7 @@ namespace Soju.Analysis;
 
 public class CoinjoinAnalyzer
 {
-	public static readonly int MaxRecursionDepth = 3;
+	public static readonly int MaxRecursionDepth = 1; // originally 3
 	public static readonly AggregationFunction Min = x => x.Any() ? x.Min(x => x.Anonymity) : 0;
 	public static readonly AggregationFunction WeightedAverage = x => x.Any() ? x.WeightedAverage(x => x.Anonymity, x => x.Amount.Satoshi) : 0;
 

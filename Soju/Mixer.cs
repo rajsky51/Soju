@@ -23,10 +23,9 @@ public class Mixer
         foreach (var wallet in wallets) 
         {
             var coinCandidates = wallet.GetCoinJoinCoinCandidates();
-            var lc = wallet.LiquidityClue;
             
             var coinSelector = CoinJoinCoinSelector.FromWallet(wallet);
-            var selectedCoins = coinSelector.SelectCoinsForRound(coinCandidates, SelectionParams, lc).ToHashSet();
+            var selectedCoins = coinSelector.SelectCoinsForRound(coinCandidates, SelectionParams, wallet.LiquidityClue).ToHashSet();
             foreach (var coin in selectedCoins)
             {
                 transaction.TryAddInput(wallet.WalletId, coin);
