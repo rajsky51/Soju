@@ -1,4 +1,6 @@
-﻿using NBitcoin;
+﻿using System.Diagnostics;
+
+using NBitcoin;
 using WabiSabi.Crypto.Randomness;
 using Soju;
 using Soju.Analysis;
@@ -16,7 +18,7 @@ for (int i = 0; i < 20; i++)
     Wallet wallet = new("wallet-" + i, liquidityClue, cjSkipFactors);
     
     var randomCoins = sampleAmounts
-        .RandomElements(50)
+        .RandomElements(20)
         .Select(x => new DumbCoin(null, Money.Coins(x), 
             allowedScriptTypes.RandomElement(SecureRandom.Instance), 1.0, 1))
         .ToList();
@@ -34,12 +36,13 @@ for (int i = 0; i < 20; i++)
     wallets.Add(wallet);
 }
 
-JSONBuilder jsonBuilder = new(wallets, "    "); // indentation is 4 spaces
+JSONBuilder jsonBuilder = new(wallets, "    "); // Indentation is 4 spaces
+StreamWriter jsonFile = new("../coinjoins.json", false); // Always creates the file
 BlockchainAnalyzer bcAnalyzer = new();
 
 for (int i = 0; i < 10; i++) 
 {
-    Console.WriteLine(i);
+    Debug.WriteLine(i);
 
     FeeRate miningFeeRate = new(Money.Satoshis(20_000));
     MoneyRange allowedAmounts = new(Money.Satoshis(10_000), Money.Coins(43_000));
@@ -68,6 +71,9 @@ for (int i = 0; i < 10; i++)
 
     bcAnalyzer.Analyze(result.Transaction);
 
-    string coinjoinJSON = jsonBuilder.CoinjoinResultsToJSON([result], 0) + "\n";
-    Console.WriteLine(coinjoinJSON);
+    string coinjoinJSON = jsonBuilder.CoinjoinResultsToJSON([result], 0);
+    
+    jsonFile.WriteLine(coinjoinJSON);
 }
+
+jsonFile.Close();

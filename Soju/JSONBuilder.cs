@@ -84,7 +84,7 @@ public class JSONBuilder {
         return txBuilder.ToString();
     }
 
-    public string InputsToJSON(Dictionary<WalletId, HashSet<DumbCoin>> inputs, int indentCount) {
+    public string InputsToJSON(IDictionary<WalletId, HashSet<DumbCoin>> inputs, int indentCount) {
         StringBuilder inputsBuilder = new();
         string indentation = string.Concat(Enumerable.Repeat(Indent, indentCount));
 
@@ -94,15 +94,24 @@ public class JSONBuilder {
                                         .OrderBy(x => x.coin.Index)
                                         .ToList();
 
-        foreach (var input in inputsWithWalletIds)
+        // The inputs are stored in sets in a dictionary. We need to convert it 
+        // to an array and sort it by their amounts descending.
+        var sortedInputs = inputs
+            .SelectMany(kvp => kvp.Value, (kvp, coin) => (kvp.Key, coin))
+            .OrderByDescending(entry => entry.coin.Amount)
+            .ToArray();
+
+        for (int i = 0; i < sortedInputs.Length; i++)
         {
-            string retString = InputToJSON(input.coin, Wallets.TryGet(input.Key), indentCount + 1);
+            var input = sortedInputs[i];
+            string retString = InputToJSON(input.coin, Wallets.TryGet(input.Key), i, indentCount + 1);
             inputsBuilder.Append(retString);
             inputsBuilder.Append(",\n");
         }
-        if (inputs.Count > 0) 
+        if (sortedInputs.Length > 0) 
         {
-            inputsBuilder.Remove(inputsBuilder.Length - 2, 1); // Trimming the last comma
+            // There actually were inputs, so we need to trim the last comma
+            inputsBuilder.Remove(inputsBuilder.Length - 2, 1);
         }
 
         inputsBuilder.Append(indentation + "}");
@@ -110,13 +119,13 @@ public class JSONBuilder {
         return inputsBuilder.ToString();
     }
 
-    public string InputToJSON(DumbCoin input, Wallet wallet, int indentCount)
+    public string InputToJSON(DumbCoin input, Wallet wallet, int index, int indentCount)
     {
         StringBuilder inputBuilder = new();
         string indentation = string.Concat(Enumerable.Repeat(Indent, indentCount));
 
         inputBuilder.Append(indentation);
-        inputBuilder.Append($"\"{input.Index}\": " + "{\n");
+        inputBuilder.Append($"\"{index}\": " + "{\n");
 
         indentation += Indent;
 
@@ -132,7 +141,7 @@ public class JSONBuilder {
         return inputBuilder.ToString();
     }
 
-    public string OutputsToJSON(Dictionary<WalletId, HashSet<DumbCoin>> outputs, int indentCount) {
+    public string OutputsToJSON(IDictionary<WalletId, HashSet<DumbCoin>> outputs, int indentCount) {
         StringBuilder outputsBuilder = new();
         string indentation = string.Concat(Enumerable.Repeat(Indent, indentCount));
 
@@ -150,7 +159,8 @@ public class JSONBuilder {
         }
         if (outputs.Count > 0) 
         {
-            outputsBuilder.Remove(outputsBuilder.Length - 2, 1); // Trimming the last comma
+            // There actually were outputs so we need to trim the last comma
+            outputsBuilder.Remove(outputsBuilder.Length - 2, 1);
         }
 
         outputsBuilder.Append(indentation + "}");
