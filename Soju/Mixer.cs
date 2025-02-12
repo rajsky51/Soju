@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
+
 using NBitcoin;
 
 namespace Soju;
@@ -16,11 +19,14 @@ public class Mixer
     public CoinjoinResult CompleteMix(IEnumerable<IWallet> wallets)
     {
         var roundId = RandomUtils.GetUInt256();
-        var transaction = new DumbTransaction(null, null);
+        DumbTransaction transaction = new(null, null);
         transaction.IsWasabi2Cj = true;
 
+        Debug.WriteLine($"We have {wallets.Count()} wallets total.");
+        Stopwatch sw = new();
+        sw.Start();
         // Select input coins from wallets
-        foreach (var wallet in wallets) 
+        Parallel.ForEach(wallets, wallet =>
         {
             var coinCandidates = wallet.GetCoinJoinCoinCandidates();
             
@@ -30,29 +36,59 @@ public class Mixer
             {
                 transaction.TryAddInput(wallet.WalletId, coin);
             }
-        }
 
+            Debug.WriteLine($"{wallet.WalletId} : selected {selectedCoins.Count} coins.");
+        });
+        sw.Stop();
+        Debug.WriteLine($"Choosing inputs took: {sw.Elapsed}. That is {sw.Elapsed / wallets.Count()} per wallet.");
+        
         // Select outputs for each wallet
-        uint outputIndex = 0;
-        foreach (var wallet in wallets)
+        sw.Restart();
+
+        ConcurrentBag<(WalletId WalletId, Output Output)> outputsWithIds = [];
+
+        Parallel.ForEach(wallets, wallet =>
         {
-            var myInputsEffectiveValues = transaction.Inputs[wallet.WalletId].Select(coin => coin.EffectiveValue(RoundParams.MiningFeeRate));
-            var othersInputsEffectiveValues = transaction.Inputs.Where(dictEntry => dictEntry.Key != wallet.WalletId).SelectMany(dictEntry => dictEntry.Value.Select(coin => coin.EffectiveValue(RoundParams.MiningFeeRate)));
+            HashSet<DumbCoin>? walletCoinsInTransaction = [];
+            if (!transaction.Inputs.TryGetValue(wallet.WalletId, out walletCoinsInTransaction))
+            {
+                // Wallet has no registered inputs in this transaction
+                return;
+            }
+            var myInputsEffectiveValues = walletCoinsInTransaction
+                .Select(coin => coin
+                .EffectiveValue(RoundParams.MiningFeeRate));
+
+            var othersInputsEffectiveValues = transaction.Inputs
+                .Where(entry => entry.Key != wallet.WalletId)
+                .SelectMany(entry => entry.Value
+                .Select(coin => coin.EffectiveValue(RoundParams.MiningFeeRate)));
+
             var availableVsize = transaction.Inputs[wallet.WalletId].Sum(coin => RoundParams.MaxVsizeCredentialValue - coin.ScriptType.EstimateInputVsize());
 
-            var outputs = wallet.OutputProvider.GetOutputs(RoundParams, myInputsEffectiveValues, othersInputsEffectiveValues, availableVsize);
-
-            // Add outputs as output coins to the transaction
-            HashSet<DumbCoin> newCoins = [];
-            foreach (var output in outputs.ToList())
+            var walletOutputs = wallet.OutputProvider.GetOutputs(RoundParams, myInputsEffectiveValues, othersInputsEffectiveValues, availableVsize);
+            foreach (var output in walletOutputs)
             {
-                transaction.TryAddOutput(wallet.WalletId, OutputToCoin(output, transaction, outputIndex));
-                outputIndex++;
+                outputsWithIds.Add((wallet.WalletId, output));
             }
-            // Remove old coins and add new coins to the wallet
+        });
+
+        // Add outputs as output coins to the transaction
+        outputsWithIds
+            .OrderByDescending(x => x.Output.Amount)
+            .Select((x, i) => (x.WalletId, Coin: OutputToCoin(x.Output, transaction, (uint)i)))
+            .ToList()
+            .ForEach(x => transaction.TryAddOutput(x.WalletId, x.Coin));
+
+        // Remove old coins and add new coins to wallets
+        foreach (var wallet in wallets)
+        {
             wallet.RemoveCoins(transaction.Inputs[wallet.WalletId]);
-            wallet.AddCoins(newCoins);
+            wallet.AddCoins(transaction.Outputs[wallet.WalletId]);
         }
+        
+        sw.Stop();
+        Debug.WriteLine($"Choosing outputs took: {sw.Elapsed}. That is {sw.Elapsed / wallets.Count()} per wallet.");
 
         return new CoinjoinResult(transaction, roundId);
     }

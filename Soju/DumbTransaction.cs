@@ -1,6 +1,6 @@
 using NBitcoin;
 using NBitcoin.Crypto;
-using System.Diagnostics.CodeAnalysis;
+using System.Collections.Concurrent;
 using System.Text;
 
 namespace Soju;
@@ -9,8 +9,8 @@ public class DumbTransaction : IEquatable<DumbTransaction>
 {
     public uint256 Id;
     public bool IsWasabi2Cj;
-    public Dictionary<WalletId, HashSet<DumbCoin>> Inputs;
-    public Dictionary<WalletId, HashSet<DumbCoin>> Outputs;
+    public ConcurrentDictionary<WalletId, HashSet<DumbCoin>> Inputs;
+    public ConcurrentDictionary<WalletId, HashSet<DumbCoin>> Outputs;
 
     public DumbTransaction(Dictionary<WalletId, HashSet<DumbCoin>>? inputs, Dictionary<WalletId, HashSet<DumbCoin>>? outputs) 
     {
@@ -18,11 +18,11 @@ public class DumbTransaction : IEquatable<DumbTransaction>
 
         IsWasabi2Cj = false;
 
-        if (inputs is not null) Inputs = new Dictionary<WalletId, HashSet<DumbCoin>>(inputs);
-        else Inputs = new Dictionary<WalletId, HashSet<DumbCoin>>();
+        if (inputs is not null) Inputs = new ConcurrentDictionary<WalletId, HashSet<DumbCoin>>(inputs);
+        else Inputs = new ConcurrentDictionary<WalletId, HashSet<DumbCoin>>();
 
-        if (outputs is not null) Outputs = new Dictionary<WalletId, HashSet<DumbCoin>>(outputs);
-        else Outputs = new Dictionary<WalletId, HashSet<DumbCoin>>();
+        if (outputs is not null) Outputs = new ConcurrentDictionary<WalletId, HashSet<DumbCoin>>(outputs);
+        else Outputs = new ConcurrentDictionary<WalletId, HashSet<DumbCoin>>();
     }
 
     public bool TryAddInput(WalletId walletId, DumbCoin input)

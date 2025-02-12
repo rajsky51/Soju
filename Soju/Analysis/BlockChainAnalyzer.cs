@@ -65,9 +65,9 @@ public class BlockchainAnalyzer
         List<(WalletId walletId, DumbCoin coin)> sortedInputs = [];
         foreach (var pair in tx.Inputs)
         {
-            foreach(var entry in pair.Value)
+            foreach(var coin in pair.Value)
             {
-                sortedInputs.Add((pair.Key, entry));
+                sortedInputs.Add((pair.Key, coin));
             }
         }
         sortedInputs.Sort((x, y) => x.coin.Amount.CompareTo(y.coin.Amount));
