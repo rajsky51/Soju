@@ -175,5 +175,5 @@ public static class Constants
 
 	// Soju additions
 	public static readonly Money DefaultPlebStopThreshold = Money.Coins(0.01m);
-	public const int DefaultAnonScoreTarget = 5;
+	public const int DefaultAnonScoreTarget = 50;
 }
