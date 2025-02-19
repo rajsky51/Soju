@@ -1,10 +1,12 @@
 using NBitcoin;
 using NBitcoin.Crypto;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text;
 
 namespace Soju;
 
+[DebuggerDisplay("{GetHash()}")]
 public class DumbTransaction : IEquatable<DumbTransaction>
 {
     public uint256 Id;
