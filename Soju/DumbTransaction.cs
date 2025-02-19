@@ -58,32 +58,33 @@ public class DumbTransaction : IEquatable<DumbTransaction>
     {
         long hash = 17;
 
-        foreach (var input in Inputs.ToList())
-        {
-            hash += input.GetHashCode()*31;
-        }
-        foreach (var output in Outputs.ToList())        
-        {
-            hash += output.GetHashCode()*31;
-        }
+        return null;
+    }
 
-        return (int)hash;
-    }}
+    public uint256 GetHash() => Id;
 
-    public override bool Equals(object? obj) => Equals(obj as DumbCoin);
+    public override int GetHashCode() => GetHash().GetHashCode();
+
+    public override bool Equals(object? obj) => Equals(obj as DumbTransaction);
 
     public bool Equals(DumbTransaction? other) => this == other;
 
     public static bool operator ==(DumbTransaction? x, DumbTransaction? y) 
     {
         if (x is null && y is null) return true;
-        if ((x is null && y is not null) || (x is not null && y is null)) return false;
-
-        if (x is null || y is null) throw new ArgumentNullException();
+        if (x is null || y is null) return false;
 
         if (x.GetHashCode() != y.GetHashCode()) return false;
 
-        return true; // hack before implementing the whole class
+        if (x.Id          != y.Id ||
+            x.IsWasabi2Cj != y.IsWasabi2Cj ||
+            x.Inputs      != y.Inputs ||
+            x.Outputs     != y.Outputs)
+        {
+            return false;
+        }
+        
+        return true;
     }
 
     public static bool operator !=(DumbTransaction? x, DumbTransaction? y) 
