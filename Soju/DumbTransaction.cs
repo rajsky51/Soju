@@ -95,7 +95,7 @@ public class DumbTransaction : IEquatable<DumbTransaction>
 
         sb.Append($"id: {Id}\n");
         sb.Append($"is Wasabi 2 Coinjoin: {(IsWasabi2Cj ? "yes" : "no")}\n");
-        if (Inputs != null) 
+        if (!Inputs.IsEmpty) 
         {
             sb.Append("Inputs\n");
             foreach (var walletInput in Inputs)
@@ -107,7 +107,7 @@ public class DumbTransaction : IEquatable<DumbTransaction>
                 }
             }
         }
-        if (Outputs != null)
+        if (!Outputs.IsEmpty)
         {
             sb.Append("Outputs\n");
             foreach (var walletOutput in Outputs)
