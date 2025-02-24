@@ -42,7 +42,7 @@ BlockchainAnalyzer bcAnalyzer = new();
 
 for (int i = 0; i < 10; i++) 
 {
-    Debug.WriteLine(i);
+    Console.WriteLine(i);
 
     FeeRate miningFeeRate = new(Money.Satoshis(20_000));
     MoneyRange allowedAmounts = new(Money.Satoshis(10_000), Money.Coins(43_000));

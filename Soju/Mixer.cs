@@ -22,7 +22,7 @@ public class Mixer
         DumbTransaction transaction = new(null, null);
         transaction.IsWasabi2Cj = true;
 
-        Debug.WriteLine($"We have {wallets.Count()} wallets total.");
+        Console.WriteLine($"We have {wallets.Count()} wallets total.");
         Stopwatch sw = new();
         sw.Start();
         // Select input coins from wallets
@@ -37,10 +37,10 @@ public class Mixer
                 transaction.TryAddInput(wallet.WalletId, coin);
             }
 
-            Debug.WriteLine($"{wallet.WalletId} : selected {selectedCoins.Count} coins.");
+            Console.WriteLine($"{wallet.WalletId} : selected {selectedCoins.Count} coins.");
         });
         sw.Stop();
-        Debug.WriteLine($"Choosing inputs took: {sw.Elapsed}. That is {sw.Elapsed / wallets.Count()} per wallet.");
+        Console.WriteLine($"Choosing inputs took: {sw.Elapsed}. That is {sw.Elapsed / wallets.Count()} per wallet.");
         
         // Select outputs for each wallet
         sw.Restart();
@@ -88,7 +88,7 @@ public class Mixer
         }
         
         sw.Stop();
-        Debug.WriteLine($"Choosing outputs took: {sw.Elapsed}. That is {sw.Elapsed / wallets.Count()} per wallet.");
+        Console.WriteLine($"Choosing outputs took: {sw.Elapsed}. That is {sw.Elapsed / wallets.Count()} per wallet.");
 
         return new CoinjoinResult(transaction, roundId);
     }
