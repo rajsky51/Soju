@@ -16,10 +16,10 @@ public class Mixer
         RoundParams = roundParams;
     }
 
-    public CoinjoinResult CompleteMix(IEnumerable<IWallet> wallets)
+    public CoinjoinResult CompleteMix(IReadOnlyList<IWallet> wallets)
     {
         var roundId = RandomUtils.GetUInt256();
-        DumbTransaction transaction = new(null, null);
+        DumbTransaction transaction = new();
         transaction.IsWasabi2Cj = true;
 
         Console.WriteLine($"We have {wallets.Count()} wallets total.");
@@ -29,12 +29,11 @@ public class Mixer
         Parallel.ForEach(wallets, wallet =>
         {
             var coinCandidates = wallet.GetCoinJoinCoinCandidates();
-            
             var coinSelector = CoinJoinCoinSelector.FromWallet(wallet);
             var selectedCoins = coinSelector.SelectCoinsForRound(coinCandidates, SelectionParams, wallet.LiquidityClue).ToHashSet();
             foreach (var coin in selectedCoins)
             {
-                transaction.TryAddInput(wallet.WalletId, coin);
+                transaction.TryAddInput(coin);
             }
 
             Console.WriteLine($"{wallet.WalletId} : selected {selectedCoins.Count} coins.");
@@ -49,12 +48,12 @@ public class Mixer
 
         Parallel.ForEach(wallets, wallet =>
         {
-            HashSet<DumbCoin>? walletCoinsInTransaction = [];
-            if (!transaction.Inputs.TryGetValue(wallet.WalletId, out walletCoinsInTransaction))
+            if (!transaction.Inputs.TryGetValue(wallet.WalletId, out HashSet<DumbCoin>? walletCoinsInTransaction))
             {
                 // Wallet has no registered inputs in this transaction
                 return;
             }
+
             var myInputsEffectiveValues = walletCoinsInTransaction
                 .Select(coin => coin
                 .EffectiveValue(RoundParams.MiningFeeRate));
@@ -64,9 +63,11 @@ public class Mixer
                 .SelectMany(entry => entry.Value
                 .Select(coin => coin.EffectiveValue(RoundParams.MiningFeeRate)));
 
-            var availableVsize = transaction.Inputs[wallet.WalletId].Sum(coin => RoundParams.MaxVsizeCredentialValue - coin.ScriptType.EstimateInputVsize());
+            var availableVsize = transaction.Inputs[wallet.WalletId].Sum(coin =>
+                RoundParams.MaxVsizeCredentialValue - coin.ScriptType.EstimateInputVsize());
 
-            var walletOutputs = wallet.OutputProvider.GetOutputs(RoundParams, myInputsEffectiveValues, othersInputsEffectiveValues, availableVsize);
+            var walletOutputs = wallet.OutputProvider.GetOutputs(RoundParams, myInputsEffectiveValues,
+                othersInputsEffectiveValues, availableVsize);
             foreach (var output in walletOutputs)
             {
                 outputsWithIds.Add((wallet.WalletId, output));
@@ -76,9 +77,8 @@ public class Mixer
         // Add outputs as output coins to the transaction
         outputsWithIds
             .OrderByDescending(x => x.Output.Amount)
-            .Select((x, i) => (x.WalletId, Coin: OutputToCoin(x.Output, transaction, (uint)i)))
             .ToList()
-            .ForEach(x => transaction.TryAddOutput(x.WalletId, x.Coin));
+            .ForEach(x => AddOutputToTransaction(transaction, x.Output, x.WalletId));
 
         // Remove old coins and add new coins to wallets
         foreach (var wallet in wallets)
@@ -93,8 +93,8 @@ public class Mixer
         return new CoinjoinResult(transaction, roundId);
     }
 
-    private static DumbCoin OutputToCoin(Output output, DumbTransaction transaction, uint outputIndex)
+    private static DumbCoin AddOutputToTransaction(DumbTransaction transaction, Output output, WalletId walletId)
     {
-        return new DumbCoin(transaction, output.EffectiveAmount, output.ScriptType, 1.0, outputIndex);
+        return transaction.AddOutputCoin(output.EffectiveAmount, output.ScriptType, 1.0, walletId);
     }
 }

@@ -3,15 +3,19 @@ using NBitcoin.Crypto;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
+using System.Transactions;
 
 namespace Soju;
 
 [DebuggerDisplay("{GetHash()}")]
 public class DumbTransaction : IEquatable<DumbTransaction>
 {
-    public uint256 Id;
+    public readonly uint256 Id;
     public bool IsWasabi2Cj;
+    public int NInputs;
     public ConcurrentDictionary<WalletId, HashSet<DumbCoin>> Inputs;
+    public int NOutputs;
+    private readonly Lock _outputsLock = new();
     public ConcurrentDictionary<WalletId, HashSet<DumbCoin>> Outputs;
 
     public DumbTransaction(Dictionary<WalletId, HashSet<DumbCoin>>? inputs, Dictionary<WalletId, HashSet<DumbCoin>>? outputs) 
@@ -27,38 +31,43 @@ public class DumbTransaction : IEquatable<DumbTransaction>
         else Outputs = new ConcurrentDictionary<WalletId, HashSet<DumbCoin>>();
     }
 
-    public bool TryAddInput(WalletId walletId, DumbCoin input)
+    public DumbTransaction() : this(null, null) {}
+
+    public bool TryAddInput(DumbCoin input)
     {
-        if (!Inputs.TryGetValue(walletId, out var coins)) 
+        if (!Inputs.TryGetValue(input.WalletId, out var coins)) 
         {
             coins = [];
-            Inputs[walletId] = coins;
+            Inputs[input.WalletId] = coins;
         }
-        return coins.Add(input);
+        
+        if (coins.Add(input))
+        {
+            Interlocked.Increment(ref NInputs);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
-    public bool TryAddOutput(WalletId walletId, DumbCoin output)
+    public DumbCoin AddOutputCoin(Money amount, ScriptType scriptType, double anonymitySet, WalletId walletId)
     {
+        DumbCoin newCoin;
+        lock (_outputsLock)
+        {
+            newCoin = new DumbCoin(this, amount, scriptType, anonymitySet, (uint)NOutputs, walletId);
+            NOutputs++;
+        }
         if (!Outputs.TryGetValue(walletId, out var coins)) 
         {
             coins = [];
             Outputs[walletId] = coins;
         }
-        return coins.Add(output);
-    }
-
-    public uint256 GetHash()
-    {
-        return Id;
-    }
-
-    public override int GetHashCode()
-    {
-    unchecked
-    {
-        long hash = 17;
-
-        return null;
+        coins.Add(newCoin);
+        
+        return newCoin;
     }
 
     public uint256 GetHash() => Id;

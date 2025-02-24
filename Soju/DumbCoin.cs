@@ -5,25 +5,27 @@ namespace Soju;
 
 public class DumbCoin : ISmartCoin, IEquatable<DumbCoin>
 {
-	public DumbTransaction Transaction;
-    public Money Amount { get; }
+	public DumbTransaction Transaction { get; }
+	public Money Amount { get; }
     public ScriptType ScriptType { get; }
 	public double AnonymitySet { get; set; }
 	public uint256 TransactionId { get; }
 	public OutPoint OutPoint { get; }
 	public byte[] KeyId { get; }
 	public uint Index { get; }
+	public WalletId WalletId { get; }
 	public bool IsSufficientlyDistancedFromExternalKeys { get; }
 
-    public DumbCoin(DumbTransaction? transaction, Money amount, ScriptType scriptType, double anonymitySet, uint index)
+    public DumbCoin(DumbTransaction transaction, Money amount, ScriptType scriptType, double anonymitySet, uint index, WalletId walletId)
     {
-		Transaction = transaction ?? new DumbTransaction(null, null);
+	    Transaction = transaction;
         Amount = amount;
         ScriptType = scriptType;
         AnonymitySet = anonymitySet;
         TransactionId = Transaction.Id;
 		KeyId = RandomUtils.GetBytes(32);
 		Index = index;
+		WalletId = walletId;
         IsSufficientlyDistancedFromExternalKeys = true;
 
 		OutPoint = new OutPoint(TransactionId, Index);

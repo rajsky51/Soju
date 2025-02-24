@@ -1,35 +1,36 @@
 ﻿using System.Diagnostics;
 
 using NBitcoin;
-using WabiSabi.Crypto.Randomness;
 using Soju;
 using Soju.Analysis;
 using Soju.Extensions;
+using Soju.Randomness;
 
 var cjSkipFactors = CoinjoinSkipFactors.NoSkip;
 ScriptType[] allowedScriptTypes = [ScriptType.Taproot, ScriptType.P2WPKH];
+FeeRate miningFeeRate = new(Money.Satoshis(20_000));
 
-// Generate wallets with randomly selected coins
-var liquidityClue = Money.Coins(10.0m);
-var sampleAmounts = Sample.Amounts;
-List<Wallet> wallets = [];
-for (int i = 0; i < 20; i++)
+// Generate wallets with randomly selected coins from the samples file
+DumbCoinHistoryGenerator coinHistoryGenerator = new(new MoneyRange(Money.Coins(0.0002m), Money.Coins(0.1m)), miningFeeRate, allowedScriptTypes);
+const int nWallets = 20;
+const int newCoinHistoryDepth = 4;
+SecureRandom secureRandom = SecureRandom.Instance;
+Money liquidityClue = Money.Coins(10.0m);
+decimal[] sampleAmounts = Sample.Amounts;
+List<Wallet> wallets = new(nWallets);
+for (int i = 0; i < nWallets; i++)
 {
     Wallet wallet = new("wallet-" + i, liquidityClue, cjSkipFactors);
-    
-    var randomCoins = sampleAmounts
-        .RandomElements(20)
-        .Select(x => new DumbCoin(null, Money.Coins(x), 
-            allowedScriptTypes.RandomElement(SecureRandom.Instance), 1.0, 1))
-        .ToList();
 
-    for (int j = 0; j < randomCoins.Count; j++)
+    const int nWalletCoins = 20;
+    decimal[] randomAmounts = sampleAmounts.RandomElements(nWalletCoins);
+    DumbCoin[] randomCoins = new DumbCoin[nWalletCoins];
+    for (int j = 0; j < randomAmounts.Count(); j++)
     {
-        // Filling the coin's transaction with dummy data
-        var coin = randomCoins[j];
-        var inputCoin = new DumbCoin(null, coin.Amount, allowedScriptTypes.RandomElement(SecureRandom.Instance), 1.0, 1);
-        coin.Transaction.TryAddInput(wallet.WalletId, inputCoin);
-        coin.Transaction.TryAddOutput(wallet.WalletId, coin);
+        DumbTransaction coinTx = new();
+        randomCoins[j] = coinTx.AddOutputCoin(Money.Coins(randomAmounts[j]),
+            allowedScriptTypes.RandomElement(secureRandom), 1.0, wallet.WalletId);
+        coinHistoryGenerator.GenerateFakeHistory(randomCoins[j], newCoinHistoryDepth);
     }
     
     wallet.AddCoins(randomCoins);
@@ -44,7 +45,6 @@ for (int i = 0; i < 10; i++)
 {
     Console.WriteLine(i);
 
-    FeeRate miningFeeRate = new(Money.Satoshis(20_000));
     MoneyRange allowedAmounts = new(Money.Satoshis(10_000), Money.Coins(43_000));
 
     UtxoSelectionParameters selectionParams = new(
@@ -67,7 +67,7 @@ for (int i = 0; i < 10; i++)
 
     Mixer mixer = new(selectionParams, roundParams);
 
-    var result = mixer.CompleteMix(wallets);
+    CoinjoinResult result = mixer.CompleteMix(wallets);
 
     bcAnalyzer.Analyze(result.Transaction);
 
