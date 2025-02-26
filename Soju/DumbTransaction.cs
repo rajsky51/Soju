@@ -70,6 +70,12 @@ public class DumbTransaction : IEquatable<DumbTransaction>
         return newCoin;
     }
 
+    public void RemoveWalletInputs(WalletId walletId)
+    {
+        Inputs.Remove(walletId, out var inputCoins);
+        if (inputCoins is not null) Interlocked.Add(ref NInputs, -inputCoins.Count());
+    }
+
     public uint256 GetHash() => Id;
 
     public override int GetHashCode() => GetHash().GetHashCode();

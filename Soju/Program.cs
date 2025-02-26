@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using System.Dynamic;
+using System.Security.Authentication.ExtendedProtection;
+using System.Text.Json;
 
 using NBitcoin;
 using Soju;
@@ -7,34 +9,51 @@ using Soju.Extensions;
 using Soju.Json;
 using Soju.Randomness;
 
-var cjSkipFactors = CoinjoinSkipFactors.NoSkip;
-ScriptType[] allowedScriptTypes = [ScriptType.Taproot, ScriptType.P2WPKH];
-FeeRate miningFeeRate = new(Money.Satoshis(20_000));
+JsonSerializerOptions jsonOptions = new()
+{
+    AllowTrailingCommas = true,
+    RespectRequiredConstructorParameters = true,
+    WriteIndented = true
+};
 
-// Generate wallets with randomly selected coins from the samples file
-DumbCoinHistoryGenerator coinHistoryGenerator = new(new MoneyRange(Money.Coins(0.0002m), Money.Coins(0.1m)), miningFeeRate, allowedScriptTypes);
-const int nWallets = 20;
+string wabiSabiConfigFileName = "Json/Test/WabiSabiConfig.json";
+string wabiSabiConfigString = File.ReadAllText(wabiSabiConfigFileName);
+WabiSabiConfig wabiSabiConfig = JsonSerializer.Deserialize<WabiSabiConfig>(wabiSabiConfigString, jsonOptions)!;
+
+string scenarioFileName = "Json/Test/Scenario.json";
+string scenarioString = File.ReadAllText(scenarioFileName);
+CoinjoinScenario scenario = JsonSerializer.Deserialize<CoinjoinScenario>(scenarioString, jsonOptions)!;
+
+RoundParameters roundParams = ParametersProvider.GetRoundParameters(wabiSabiConfig);
+UtxoSelectionParameters utxoSelectionParams = UtxoSelectionParameters.FromRoundParameters(roundParams, roundParams.AllowedInputTypes.ToArray());
+CoinjoinSkipFactors cjSkipFactors = CoinjoinSkipFactors.NoSkip;
+ScriptType[] allowedScriptTypes = roundParams.AllowedInputTypes.Intersect(roundParams.AllowedOutputTypes).ToArray();
+
+// Generate wallets according to the scenario
+DumbCoinHistoryGenerator coinHistoryGenerator = new(new MoneyRange(Money.Coins(0.0002m), Money.Coins(0.1m)), roundParams.MiningFeeRate, allowedScriptTypes);
+int nWallets = scenario.Wallets.Count;
 const int newCoinHistoryDepth = 4;
 SecureRandom secureRandom = SecureRandom.Instance;
 Money liquidityClue = Money.Coins(10.0m);
-decimal[] sampleAmounts = Sample.Amounts;
 List<Wallet> wallets = new(nWallets);
+
 for (int i = 0; i < nWallets; i++)
 {
-    Wallet wallet = new("wallet-" + i, liquidityClue, cjSkipFactors);
-
-    const int nWalletCoins = 20;
-    decimal[] randomAmounts = sampleAmounts.RandomElements(nWalletCoins);
-    DumbCoin[] randomCoins = new DumbCoin[nWalletCoins];
-    for (int j = 0; j < randomAmounts.Count(); j++)
+    WalletConfig walletConfig = scenario.Wallets[i];
+    float anonScoreTarget = scenario.DefaultAnonScoreTarget;
+    if (walletConfig.AnonScoreTarget is not null) float.TryParse(walletConfig.AnonScoreTarget, out anonScoreTarget);
+    Wallet wallet = new("wallet-" + i, (int)anonScoreTarget, liquidityClue, cjSkipFactors);
+    List<long> funds = walletConfig.Funds;
+    DumbCoin[] coins = new DumbCoin[funds.Count];
+    for (int j = 0; j < funds.Count; j++)
     {
         DumbTransaction coinTx = new();
-        randomCoins[j] = coinTx.AddOutputCoin(Money.Coins(randomAmounts[j]),
+        coins[j] = coinTx.AddOutputCoin(Money.Satoshis(funds[j]),
             allowedScriptTypes.RandomElement(secureRandom), 1.0, wallet.WalletId);
-        coinHistoryGenerator.GenerateFakeHistory(randomCoins[j], newCoinHistoryDepth);
+        coinHistoryGenerator.GenerateFakeHistory(coins[j], newCoinHistoryDepth);
     }
-    
-    wallet.AddCoins(randomCoins);
+
+    wallet.AddCoins(coins);
     wallets.Add(wallet);
 }
 
@@ -42,31 +61,12 @@ JsonBuilder jsonBuilder = new(wallets, "    "); // 4 space indentation
 StreamWriter jsonFile = new("../coinjoins.json", false); // Always create the file
 BlockchainAnalyzer bcAnalyzer = new();
 
-for (int i = 0; i < 10; i++) 
+long nRounds = scenario.Rounds == 0 ? long.MaxValue : scenario.Rounds; // long.MaxValue is basically infinity
+for (long i = 0; i < nRounds; i++) 
 {
     Console.WriteLine(i);
 
-    MoneyRange allowedAmounts = new(Money.Satoshis(10_000), Money.Coins(43_000));
-
-    UtxoSelectionParameters selectionParams = new(
-        AllowedInputAmounts     : allowedAmounts, 
-        MinAllowedOutputAmount  : allowedAmounts.Min,
-        MiningFeeRate           : miningFeeRate,
-        AllowedInputScriptTypes : [.. allowedScriptTypes]
-    );
-
-    RoundParameters roundParams = new(
-        miningFeeRate        : miningFeeRate, 
-        maxSuggestedAmount   : Money.Coins(43_000),
-		minInputCountByRound : 10,
-		maxInputCountByRound : 500,
-		allowedInputAmounts  : allowedAmounts,
-		allowedOutputAmounts : allowedAmounts,
-		allowedInputTypes    : [.. allowedScriptTypes],
-		allowedOutputTypes   : [.. allowedScriptTypes]
-    );
-
-    Mixer mixer = new(selectionParams, roundParams);
+    Mixer mixer = new(utxoSelectionParams, roundParams);
 
     CoinjoinResult result = mixer.CompleteMix(wallets);
 
@@ -78,3 +78,5 @@ for (int i = 0; i < 10; i++)
 }
 
 jsonFile.Close();
+
+return 0;

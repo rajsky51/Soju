@@ -66,8 +66,19 @@ public class Mixer
             var availableVsize = transaction.Inputs[wallet.WalletId].Sum(coin =>
                 RoundParams.MaxVsizeCredentialValue - coin.ScriptType.EstimateInputVsize());
 
-            var walletOutputs = wallet.OutputProvider.GetOutputs(RoundParams, myInputsEffectiveValues,
-                othersInputsEffectiveValues, availableVsize);
+            Output[] walletOutputs;
+            try
+            {
+                walletOutputs = wallet.OutputProvider.GetOutputs(RoundParams, myInputsEffectiveValues,
+                    othersInputsEffectiveValues, availableVsize).ToArray();
+            }
+            catch (InvalidOperationException e)
+            {
+                // The wallet couldn't select any outputs so we need to unregister all its inputs from the coinjoin
+                transaction.RemoveWalletInputs(wallet.WalletId);
+                return;
+            }
+
             foreach (var output in walletOutputs)
             {
                 outputsWithIds.Add((wallet.WalletId, output));
@@ -83,8 +94,11 @@ public class Mixer
         // Remove old coins and add new coins to wallets
         foreach (var wallet in wallets)
         {
-            wallet.RemoveCoins(transaction.Inputs[wallet.WalletId]);
-            wallet.AddCoins(transaction.Outputs[wallet.WalletId]);
+            if (transaction.Outputs.ContainsKey(wallet.WalletId)) 
+            {
+                wallet.RemoveCoins(transaction.Inputs[wallet.WalletId]);
+                wallet.AddCoins(transaction.Outputs[wallet.WalletId]);
+            }
         }
         
         sw.Stop();

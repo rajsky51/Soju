@@ -1,0 +1,22 @@
+{
+    "name": "default",
+    "rounds": 0,
+    "blocks": 120,
+    "default_version": "2.0.4",
+    "distributor_version": "2.0.4",
+    "default_anon_score_target": 5,
+    "default_redcoin_isolation": false,
+    "backend": {
+        "MaxInputCountByRound": 200,
+        "MinInputCountByRoundMultiplier": 0.2,
+    },
+    "wallets": [
+        {"funds": [200000, 50000]},
+        {"funds": [3000000], "delay_rounds": 5},
+        {"funds": [1000000, 50000], "delay_rounds": 3},
+        {"funds": [100000]},
+        {"funds": [200000], "version": "2.0.3"},
+        {"funds": [4000000], "anon_score_target": "25"},
+        {"funds": [3500000], "redcoin_isolation": true}
+    ]
+}

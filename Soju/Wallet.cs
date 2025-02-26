@@ -21,13 +21,13 @@ public class Wallet : IWallet
 
     public HashSet<DumbCoin> Coins = [];
 
-    public Wallet(string walletName, Money liquidityClue, CoinjoinSkipFactors cjSkipFactors)
+    public Wallet(string walletName, int anonScoreTarget, Money liquidityClue, CoinjoinSkipFactors cjSkipFactors)
     {
         WalletName = walletName;
         WalletId = new WalletId(Guid.NewGuid());
         IsMixable = true;
         OutputProvider = new OutputProvider();
-        AnonScoreTarget = Constants.DefaultAnonScoreTarget;
+        AnonScoreTarget = anonScoreTarget;
         ConsolidationMode = false;
         RedCoinIsolation = false;
         CoinjoinSkipFactors = cjSkipFactors;
