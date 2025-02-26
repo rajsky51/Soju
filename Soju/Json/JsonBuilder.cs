@@ -1,9 +1,10 @@
 using NBitcoin;
 using NBitcoin.DataEncoders;
 using System.Text;
-using Soju;
 
-public class JSONBuilder {
+namespace Soju.Json;
+
+public class JsonBuilder {
     private static string EncodeBase32(byte[] bytes) => Encoders.Base32.EncodeData(bytes);
     private static string EncodeBase32(uint256 value) => EncodeBase32(value.ToBytes());
 
@@ -11,7 +12,7 @@ public class JSONBuilder {
 
     public Dictionary<WalletId, Wallet> Wallets;
 
-    public JSONBuilder(IEnumerable<Wallet> wallets, string indent) 
+    public JsonBuilder(IEnumerable<Wallet> wallets, string indent) 
     {
         Wallets = [];
         foreach (var wallet in wallets) 
@@ -22,7 +23,7 @@ public class JSONBuilder {
         Indent = indent;
     }
 
-    public string CoinjoinResultsToJSON(IEnumerable<CoinjoinResult> cjResults, int indentCount) 
+    public string CoinjoinResultsToJson(IEnumerable<CoinjoinResult> cjResults, int indentCount) 
     {
         StringBuilder jsonBuilder = new();
         string indentation = string.Concat(Enumerable.Repeat(Indent, indentCount));
@@ -31,7 +32,7 @@ public class JSONBuilder {
 
         foreach (var result in cjResults) 
         {
-            jsonBuilder.Append(CoinjoinToJSON(result, indentCount + 1));
+            jsonBuilder.Append(CoinjoinToJson(result, indentCount + 1));
             jsonBuilder.Append(",\n");
         }
         jsonBuilder.Remove(jsonBuilder.Length - 2, 1); // Trimming the last comma
@@ -41,7 +42,7 @@ public class JSONBuilder {
         return jsonBuilder.ToString();
     }
 
-    public string CoinjoinToJSON(CoinjoinResult cj, int indentCount) 
+    private string CoinjoinToJson(CoinjoinResult cj, int indentCount) 
     {
         StringBuilder cjBuilder = new();
         string indentation = string.Concat(Enumerable.Repeat(Indent, indentCount));
@@ -53,10 +54,10 @@ public class JSONBuilder {
 
         cjBuilder.Append(indentation + $"\"txid\": \"{tx.Id}\",\n");
 
-        cjBuilder.Append(InputsToJSON(tx.Inputs, indentCount + 1));
+        cjBuilder.Append(InputsToJson(tx.Inputs, indentCount + 1));
         cjBuilder.Append(",\n");
 
-        cjBuilder.Append(OutputsToJSON(tx.Outputs, indentCount + 1));
+        cjBuilder.Append(OutputsToJson(tx.Outputs, indentCount + 1));
         cjBuilder.Append(",\n");
 
         cjBuilder.Append(indentation + $"\"round_id\": {EncodeBase32(cj.RoundId)}\n");
@@ -68,31 +69,11 @@ public class JSONBuilder {
         return cjBuilder.ToString();
     }
 
-    public string TransactionToJSON(DumbTransaction tx, int indentCount) 
-    {
-        StringBuilder txBuilder = new();
-        string indentation = string.Concat(Enumerable.Repeat(Indent, indentCount));
-
-        txBuilder.Append(indentation + $"\"txid\": \"{tx.Id}\",\n");
-
-        txBuilder.Append(InputsToJSON(tx.Inputs, indentCount));
-        txBuilder.Append(",\n");
-
-        txBuilder.Append(OutputsToJSON(tx.Outputs, indentCount));
-        txBuilder.Append("\n");
-
-        return txBuilder.ToString();
-    }
-
-    public string InputsToJSON(IDictionary<WalletId, HashSet<DumbCoin>> inputs, int indentCount) {
+    private string InputsToJson(IDictionary<WalletId, HashSet<DumbCoin>> inputs, int indentCount) {
         StringBuilder inputsBuilder = new();
         string indentation = string.Concat(Enumerable.Repeat(Indent, indentCount));
 
         inputsBuilder.Append(indentation + "\"inputs\": {\n");
-
-        var inputsWithWalletIds = inputs.SelectMany(pair => pair.Value, (pair, coin) => (pair.Key, coin))
-                                        .OrderBy(x => x.coin.Index)
-                                        .ToList();
 
         // The inputs are stored in sets in a dictionary. We need to convert it 
         // to an array and sort it by their amounts descending.
@@ -104,7 +85,7 @@ public class JSONBuilder {
         for (int i = 0; i < sortedInputs.Length; i++)
         {
             var input = sortedInputs[i];
-            string retString = InputToJSON(input.coin, Wallets.TryGet(input.Key), i, indentCount + 1);
+            string retString = InputToJson(input.coin, Wallets.TryGet(input.Key), i, indentCount + 1);
             inputsBuilder.Append(retString);
             inputsBuilder.Append(",\n");
         }
@@ -119,7 +100,7 @@ public class JSONBuilder {
         return inputsBuilder.ToString();
     }
 
-    public string InputToJSON(DumbCoin input, Wallet wallet, int index, int indentCount)
+    private string InputToJson(DumbCoin input, Wallet wallet, int index, int indentCount)
     {
         StringBuilder inputBuilder = new();
         string indentation = string.Concat(Enumerable.Repeat(Indent, indentCount));
@@ -141,7 +122,7 @@ public class JSONBuilder {
         return inputBuilder.ToString();
     }
 
-    public string OutputsToJSON(IDictionary<WalletId, HashSet<DumbCoin>> outputs, int indentCount) {
+    private string OutputsToJson(IDictionary<WalletId, HashSet<DumbCoin>> outputs, int indentCount) {
         StringBuilder outputsBuilder = new();
         string indentation = string.Concat(Enumerable.Repeat(Indent, indentCount));
 
@@ -153,7 +134,7 @@ public class JSONBuilder {
 
         foreach (var output in outputsWithWalletIds)
         {
-            string retString = OutputToJSON(output.coin, Wallets.TryGet(output.Key), indentCount + 1);
+            string retString = OutputToJson(output.coin, Wallets.TryGet(output.Key), indentCount + 1);
             outputsBuilder.Append(retString);
             outputsBuilder.Append(",\n");
         }
@@ -168,7 +149,7 @@ public class JSONBuilder {
         return outputsBuilder.ToString();
     }
 
-    public string OutputToJSON(DumbCoin output, Wallet wallet, int indentCount)
+    private string OutputToJson(DumbCoin output, Wallet wallet, int indentCount)
     {
         StringBuilder outputBuilder = new();
         string indentation = string.Concat(Enumerable.Repeat(Indent, indentCount));

@@ -4,6 +4,7 @@ using NBitcoin;
 using Soju;
 using Soju.Analysis;
 using Soju.Extensions;
+using Soju.Json;
 using Soju.Randomness;
 
 var cjSkipFactors = CoinjoinSkipFactors.NoSkip;
@@ -37,8 +38,8 @@ for (int i = 0; i < nWallets; i++)
     wallets.Add(wallet);
 }
 
-JSONBuilder jsonBuilder = new(wallets, "    "); // Indentation is 4 spaces
-StreamWriter jsonFile = new("../coinjoins.json", false); // Always creates the file
+JsonBuilder jsonBuilder = new(wallets, "    "); // 4 space indentation
+StreamWriter jsonFile = new("../coinjoins.json", false); // Always create the file
 BlockchainAnalyzer bcAnalyzer = new();
 
 for (int i = 0; i < 10; i++) 
@@ -71,9 +72,9 @@ for (int i = 0; i < 10; i++)
 
     bcAnalyzer.Analyze(result.Transaction);
 
-    string coinjoinJSON = jsonBuilder.CoinjoinResultsToJSON([result], 0);
+    string coinjoinJson = jsonBuilder.CoinjoinResultsToJson([result], 0);
     
-    jsonFile.WriteLine(coinjoinJSON);
+    jsonFile.WriteLine(coinjoinJson);
 }
 
 jsonFile.Close();
