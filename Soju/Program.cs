@@ -55,23 +55,27 @@ for (int i = 0; i < nWallets; i++)
     wallets.Add(wallet);
 }
 
-JsonBuilder jsonBuilder = new(wallets, "    "); // 4 space indentation
 StreamWriter jsonFile = new("../coinjoins.json", false); // Always create the file
-BlockchainAnalyzer bcAnalyzer = new();
+JsonSerializerOptions serializerOptions = new()
+{
+    WriteIndented = true,
+};
+serializerOptions.Converters.Add(new DumbTransactionConverter(wallets));
+serializerOptions.Converters.Add(new CoinjoinEnumerableConverter());
 
+Mixer mixer = new(utxoSelectionParams, roundParams);
+BlockchainAnalyzer bcAnalyzer = new();
 long nRounds = scenario.Rounds == 0 ? long.MaxValue : scenario.Rounds; // long.MaxValue is basically infinity
 for (long i = 0; i < nRounds; i++) 
 {
     Console.WriteLine(i);
 
-    Mixer mixer = new(utxoSelectionParams, roundParams);
-
     CoinjoinResult result = mixer.CompleteMix(wallets);
-
     bcAnalyzer.Analyze(result.Transaction);
 
-    string coinjoinJson = jsonBuilder.CoinjoinResultsToJson([result], 0);
+    List<CoinjoinResult> results = new List<CoinjoinResult>{result};
     
+    string coinjoinJson = JsonSerializer.Serialize(results, serializerOptions);
     jsonFile.WriteLine(coinjoinJson);
 }
 

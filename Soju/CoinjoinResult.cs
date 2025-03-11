@@ -1,7 +1,10 @@
+using System.Text.Json.Serialization;
 using NBitcoin;
+using Soju.Json;
 
 namespace Soju;
 
+[JsonConverter(typeof(CoinjoinResultConverter))]
 public record CoinjoinResult 
 {
     public readonly DumbTransaction Transaction;
