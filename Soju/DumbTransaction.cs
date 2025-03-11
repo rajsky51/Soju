@@ -76,6 +76,15 @@ public class DumbTransaction : IEquatable<DumbTransaction>
         if (inputCoins is not null) Interlocked.Add(ref NInputs, -inputCoins.Count());
     }
 
+    public void OrderOutputsByAmountDescending()
+    {
+        DumbCoin[] sortedOutputs = Outputs.SelectMany(kvp => kvp.Value).OrderByDescending(coin => coin.Amount).ToArray();
+        for (uint i = 0; i < sortedOutputs.Length; i++)
+        {
+            sortedOutputs[i].Index = i;
+        }
+    }
+
     public uint256 GetHash() => Id;
 
     public override int GetHashCode() => GetHash().GetHashCode();

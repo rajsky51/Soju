@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Soju", "Soju\Soju.csproj", "{DCB38A84-45E3-4FAB-B96C-4F952DAF6BB2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Soju.Tests", "Soju.Tests\Soju.Tests.csproj", "{854D4459-34CF-42C1-A512-C19DF8041678}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{DCB38A84-45E3-4FAB-B96C-4F952DAF6BB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DCB38A84-45E3-4FAB-B96C-4F952DAF6BB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DCB38A84-45E3-4FAB-B96C-4F952DAF6BB2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{854D4459-34CF-42C1-A512-C19DF8041678}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{854D4459-34CF-42C1-A512-C19DF8041678}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{854D4459-34CF-42C1-A512-C19DF8041678}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{854D4459-34CF-42C1-A512-C19DF8041678}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
