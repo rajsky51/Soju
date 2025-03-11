@@ -17,11 +17,12 @@ public class DumbTransaction : IEquatable<DumbTransaction>
     private readonly Lock _outputsLock = new();
     public ConcurrentDictionary<WalletId, HashSet<DumbCoin>> Outputs;
 
-    public DumbTransaction(Dictionary<WalletId, HashSet<DumbCoin>>? inputs, Dictionary<WalletId, HashSet<DumbCoin>>? outputs) 
+    public DumbTransaction(IDictionary<WalletId, HashSet<DumbCoin>>? inputs,
+        IDictionary<WalletId, HashSet<DumbCoin>>? outputs, bool isWasabi2Cj = false)
     {
         Id = RandomUtils.GetUInt256();
 
-        IsWasabi2Cj = false;
+        IsWasabi2Cj = isWasabi2Cj;
 
         if (inputs is not null) Inputs = new ConcurrentDictionary<WalletId, HashSet<DumbCoin>>(inputs);
         else Inputs = new ConcurrentDictionary<WalletId, HashSet<DumbCoin>>();
