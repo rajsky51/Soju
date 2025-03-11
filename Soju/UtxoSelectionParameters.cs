@@ -1,12 +1,7 @@
-using System.Collections.Generic;
 using NBitcoin;
 using System.Collections.Immutable;
-using System.Linq;
 using WabiSabi.Crypto.Randomness;
-// using WalletWasabi.Extensions;
-// using WalletWasabi.WabiSabi.Backend.Rounds;
-// using WalletWasabi.WabiSabi.Models;
-// using WalletWasabi.WabiSabi.Client.CoinJoin.Client.Decomposer;
+using Soju.Decomposer;
 
 namespace Soju;
 

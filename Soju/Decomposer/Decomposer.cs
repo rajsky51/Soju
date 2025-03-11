@@ -1,9 +1,7 @@
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
 using Soju.Extensions;
+using Soju.Helpers;
 
-namespace Soju;
+namespace Soju.Decomposer;
 
 /// <summary>
 /// Notebook: https://github.com/lontivero/DecompositionsPlayground/blob/master/Notebook.ipynb

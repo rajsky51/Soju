@@ -1,10 +1,8 @@
 using NBitcoin;
-using System.Collections.Generic;
-using System.Linq;
 using WabiSabi.Crypto.Randomness;
 using Soju.Extensions;
 
-namespace Soju;
+namespace Soju.Decomposer;
 
 /// <summary>
 /// Pull requests to this file must be up to date with this simulation to ensure correctness: https://github.com/nopara73/Sake

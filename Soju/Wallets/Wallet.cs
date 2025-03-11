@@ -1,4 +1,5 @@
 using NBitcoin;
+using Soju.Decomposer;
 using Soju.Helpers;
 
 namespace Soju.Wallets;

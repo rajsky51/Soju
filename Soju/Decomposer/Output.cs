@@ -1,6 +1,6 @@
 using NBitcoin;
 
-namespace Soju;
+namespace Soju.Decomposer;
 
 public record Output
 {
