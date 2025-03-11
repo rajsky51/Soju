@@ -13,7 +13,7 @@ public class DumbCoin : ISmartCoin, IEquatable<DumbCoin>
 	public uint256 TransactionId { get; }
 	public OutPoint OutPoint { get; }
 	public byte[] KeyId { get; }
-	public uint Index { get; }
+	public uint Index { get; set; }
 	public WalletId WalletId { get; }
 	public bool IsSufficientlyDistancedFromExternalKeys { get; }
 
@@ -55,7 +55,7 @@ public class DumbCoin : ISmartCoin, IEquatable<DumbCoin>
 
 	public override int GetHashCode() 
     {
-        return 17 + 31*TransactionId.GetHashCode() + 31*31*Index.GetHashCode();
+        return 17 + 31*TransactionId.GetHashCode() + 31*31*KeyId.GetHashCode();
     }
 
 	public static bool operator ==(DumbCoin? x, DumbCoin? y)
