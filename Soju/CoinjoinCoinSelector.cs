@@ -1,17 +1,11 @@
 using NBitcoin;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 using WabiSabi.Crypto.Randomness;
-// using WalletWasabi.Blockchain.TransactionOutputs;
-// using WalletWasabi.Extensions;
-// using WalletWasabi.Helpers;
-// using WalletWasabi.Logging;
-// using WalletWasabi.Wallets;
 using Soju.Extensions;
 using Soju.Helpers;
 using Soju.Logging;
+using Soju.Wallets;
 
 using SecureRandom = WabiSabi.Crypto.Randomness.SecureRandom;
 

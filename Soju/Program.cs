@@ -1,13 +1,11 @@
-﻿using System.Dynamic;
-using System.Security.Authentication.ExtendedProtection;
+﻿using NBitcoin;
 using System.Text.Json;
-
-using NBitcoin;
 using Soju;
 using Soju.Analysis;
 using Soju.Extensions;
 using Soju.Json;
 using Soju.Randomness;
+using Soju.Wallets;
 
 JsonSerializerOptions jsonOptions = new()
 {

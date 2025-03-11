@@ -1,9 +1,8 @@
 using NBitcoin;
-using NBitcoin.Crypto;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
-using System.Transactions;
+using Soju.Wallets;
 
 namespace Soju;
 

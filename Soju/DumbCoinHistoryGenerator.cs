@@ -2,6 +2,7 @@ using NBitcoin;
 using Soju.Extensions;
 using Soju.Helpers;
 using Soju.Randomness;
+using Soju.Wallets;
 
 namespace Soju;
 

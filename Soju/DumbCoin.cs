@@ -1,5 +1,6 @@
 using NBitcoin;
 using System.Text;
+using Soju.Wallets;
 
 namespace Soju;
 

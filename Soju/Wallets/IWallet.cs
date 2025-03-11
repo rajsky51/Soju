@@ -1,7 +1,7 @@
 using NBitcoin;
 using Soju.Batching;
 
-namespace Soju;
+namespace Soju.Wallets;
 
 public interface IWallet
 {

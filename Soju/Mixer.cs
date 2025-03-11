@@ -1,7 +1,7 @@
+using NBitcoin;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-
-using NBitcoin;
+using Soju.Wallets;
 
 namespace Soju;
 

@@ -1,7 +1,7 @@
 using NBitcoin;
 using Soju.Helpers;
 
-namespace Soju;
+namespace Soju.Wallets;
 
 public class Wallet : IWallet 
 {

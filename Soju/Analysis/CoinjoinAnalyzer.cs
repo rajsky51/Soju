@@ -1,9 +1,6 @@
 using NBitcoin;
-using System.Collections.Generic;
-using System.Linq;
-
 using Soju.Extensions;
-using NBitcoin.Crypto;
+using Soju.Wallets;
 
 namespace Soju.Analysis;
 

@@ -1,6 +1,7 @@
 using NBitcoin;
 using NBitcoin.DataEncoders;
 using System.Text;
+using Soju.Wallets;
 
 namespace Soju.Json;
 

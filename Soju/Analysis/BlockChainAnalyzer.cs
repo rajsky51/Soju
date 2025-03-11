@@ -1,6 +1,6 @@
 using NBitcoin;
-using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using Soju.Wallets;
 
 namespace Soju.Analysis;
 
