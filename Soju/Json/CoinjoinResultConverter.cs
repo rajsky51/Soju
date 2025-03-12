@@ -24,6 +24,8 @@ public class CoinjoinResultConverter : JsonConverter<CoinjoinResult>
         writer.WriteStartObject(encodedRoundId);
         JsonSerializer.Serialize(writer, result.Transaction, options);
         writer.WriteString("round_id", encodedRoundId);
+        writer.WriteNumber("mining_fee", result.MiningFee.Satoshi);
+        writer.WriteNumber("coordination_fee", result.CoordinationFee.Satoshi);
         writer.WriteEndObject();
     }
 }

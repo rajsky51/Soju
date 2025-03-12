@@ -105,11 +105,32 @@ public class Mixer
         sw.Stop();
         Console.WriteLine($"Choosing outputs took: {sw.Elapsed}. That is {sw.Elapsed / wallets.Count()} per wallet.");
 
-        return new CoinjoinResult(transaction, roundId);
+        Money totalInputsAmount = transaction.Inputs.SelectMany(kvp => kvp.Value).Sum(coin => coin.Amount);
+        Money totalOutputsAmount = transaction.Outputs.SelectMany(kvp => kvp.Value).Sum(coin => coin.Amount); 
+        Money coordinationFee = CalculateCoordinationFee(RoundParams, transaction, ScriptType.P2WPKH);
+        Money miningFee = totalInputsAmount - totalOutputsAmount - coordinationFee;
+
+        return new CoinjoinResult(transaction, roundId, miningFee, coordinationFee);
     }
 
     private static DumbCoin AddOutputToTransaction(DumbTransaction transaction, Output output, WalletId walletId)
     {
         return transaction.AddOutputCoin(output.EffectiveAmount, output.ScriptType, 1.0, walletId);
+    }
+
+    private static Money CalculateCoordinationFee(RoundParameters roundParameters, DumbTransaction tx, ScriptType coordinatorScriptType)
+    {
+        int sizeToPayFor = tx.EstimateVSize() + coordinatorScriptType.EstimateOutputVsize();
+        Money miningFee = roundParameters.MiningFeeRate.GetFee(sizeToPayFor) + Money.Satoshis(1);
+
+        Money totalInputsAmount = tx.Inputs.SelectMany(kvp => kvp.Value).Sum(coin => coin.Amount);
+        Money totalOutputsAmount = tx.Outputs.SelectMany(kvp => kvp.Value).Sum(coin => coin.Amount);
+        Money balance = totalInputsAmount - totalOutputsAmount;
+        Money availableCoordinationFee = balance - miningFee;
+
+        Money minEconomicalOutput = roundParameters.MiningFeeRate.GetFee(coordinatorScriptType.EstimateOutputVsize()) +
+                                  new FeeRate(1.0m).GetFee(coordinatorScriptType.EstimateInputVsize());
+
+        return availableCoordinationFee > minEconomicalOutput ? availableCoordinationFee : Money.Zero;
     }
 }

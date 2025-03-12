@@ -85,6 +85,12 @@ public class DumbTransaction : IEquatable<DumbTransaction>
         }
     }
 
+    public int EstimateVSize()
+    {
+        return Inputs.SelectMany(kvp => kvp.Value).Sum(coin => coin.ScriptType.EstimateInputVsize())
+            + Outputs.SelectMany(kvp => kvp.Value).Sum(coin => coin.ScriptType.EstimateOutputVsize());
+    }
+
     public uint256 GetHash() => Id;
 
     public override int GetHashCode() => GetHash().GetHashCode();
