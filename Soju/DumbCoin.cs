@@ -14,7 +14,7 @@ public class DumbCoin : ISmartCoin, IEquatable<DumbCoin>
 	public OutPoint OutPoint { get; }
 	public byte[] KeyId { get; }
 	public uint Index { get; set; }
-	public WalletId WalletId { get; }
+	public WalletId WalletId { get; set; }
 	public bool IsSufficientlyDistancedFromExternalKeys { get; }
 
     public DumbCoin(DumbTransaction transaction, Money amount, ScriptType scriptType, double anonymitySet, uint index, WalletId walletId)
