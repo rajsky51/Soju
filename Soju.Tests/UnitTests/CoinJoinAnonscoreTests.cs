@@ -2,7 +2,6 @@ using NBitcoin;
 using Soju.Analysis;
 using Soju.Helpers;
 using Soju.Wallets;
-using Xunit;
 
 namespace Soju.Tests.UnitTests;
 
