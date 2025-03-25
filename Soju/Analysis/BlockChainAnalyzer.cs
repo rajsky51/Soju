@@ -79,7 +79,7 @@ public class BlockchainAnalyzer
                 sortedInputs.Add((pair.Key, coin));
             }
         }
-        sortedInputs.Sort((x, y) => x.coin.Amount.CompareTo(y.coin.Amount));
+        sortedInputs.Sort((x, y) => y.coin.Amount.CompareTo(x.coin.Amount));
 
         for (int i = 0; i < sortedInputs.Count; i++)
         {
@@ -87,14 +87,6 @@ public class BlockchainAnalyzer
 	        else break;
         }
 
-        // List<WalletVirtualInput> walletVirtualInputs = [];
-        // if (tx.Inputs.TryGetValue(walletId, out var inputCoins))
-        // {
-	       //  foreach (DumbCoin coin in inputCoins)
-	       //  {
-		      //   walletVirtualInputs.Add(new WalletVirtualInput(coin.KeyId, (HashSet<DumbCoin>) [coin]));
-	       //  }
-        // }
         halfMixedAnonScore = CoinjoinAnalyzer.Min(walletVirtualInputs.Where(x => ourLargeKeyIds.Contains(x.KeyId)).Select(x => new CoinjoinAnalyzer.AmountWithAnonymity(x.AnonymitySet, x.Amount)));
 		halfMixedAnonScoreSanctioned = CoinjoinAnalyzer.Min(walletVirtualInputs.Where(x => ourLargeKeyIds.Contains(x.KeyId)).Select(x => new CoinjoinAnalyzer.AmountWithAnonymity(x.AnonymitySet + cjAnal.ComputeInputSanction(x, walletId, CoinjoinAnalyzer.Min), x.Amount)));
 
