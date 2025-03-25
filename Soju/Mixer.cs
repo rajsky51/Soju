@@ -21,7 +21,6 @@ public class Mixer
     {
         var roundId = RandomUtils.GetUInt256();
         DumbTransaction transaction = new();
-        transaction.IsWasabi2Cj = true;
 
         Console.WriteLine($"We have {wallets.Count()} wallets total.");
         Stopwatch sw = new();

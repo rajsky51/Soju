@@ -2,6 +2,7 @@ using NBitcoin;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
+using Soju.Analysis;
 using Soju.Wallets;
 
 namespace Soju;
@@ -9,26 +10,40 @@ namespace Soju;
 [DebuggerDisplay("{GetHash()}")]
 public class DumbTransaction : IEquatable<DumbTransaction>
 {
+    private Lazy<long[]> _outputValues;
+    private Lazy<bool> _isWasabi2Cj;
+    
     public readonly uint256 Id;
-    public bool IsWasabi2Cj;
+    public bool IsWasabi2Cj => _isWasabi2Cj.Value;
+    public long[] OutputValues => _outputValues.Value;
+    
     public int NInputs;
     public ConcurrentDictionary<WalletId, HashSet<DumbCoin>> Inputs;
-    public int NOutputs;
+    
     private readonly Lock _outputsLock = new();
+    public int NOutputs;
     public ConcurrentDictionary<WalletId, HashSet<DumbCoin>> Outputs;
 
     public DumbTransaction(IDictionary<WalletId, HashSet<DumbCoin>>? inputs,
-        IDictionary<WalletId, HashSet<DumbCoin>>? outputs, bool isWasabi2Cj = false)
+        IDictionary<WalletId, HashSet<DumbCoin>>? outputs)
     {
         Id = RandomUtils.GetUInt256();
 
-        IsWasabi2Cj = isWasabi2Cj;
-
         if (inputs is not null) Inputs = new ConcurrentDictionary<WalletId, HashSet<DumbCoin>>(inputs);
         else Inputs = new ConcurrentDictionary<WalletId, HashSet<DumbCoin>>();
+        NInputs = Inputs.SelectMany(kvp => kvp.Value).Count();
 
         if (outputs is not null) Outputs = new ConcurrentDictionary<WalletId, HashSet<DumbCoin>>(outputs);
         else Outputs = new ConcurrentDictionary<WalletId, HashSet<DumbCoin>>();
+        NOutputs = Outputs.SelectMany(kvp => kvp.Value).Count();
+
+        _outputValues = new Lazy<long[]>(() => Outputs.SelectMany(kvp => kvp.Value).OrderBy(coin => coin.Index).Select(coin => coin.Amount.Satoshi).ToArray(), true);
+        _isWasabi2Cj = new Lazy<bool>(
+            () => NOutputs >= 2 // Sanity check.
+            && NInputs >= 50 // 50 was the minimum input count at the beginning of Wasabi 2.
+            && OutputValues.Count(x => BlockchainAnalyzer.StdDenoms.Contains(x)) > OutputValues.Length * 0.8 // Most of the outputs contains the denomination.
+            && OutputValues.Zip(OutputValues.Skip(1)).All(p => p.First >= p.Second), // Outputs are ordered descending.
+            isThreadSafe: true);
     }
 
     public DumbTransaction() : this(null, null) {}
