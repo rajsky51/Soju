@@ -22,25 +22,45 @@ public class Mixer
         var roundId = RandomUtils.GetUInt256();
         DumbTransaction transaction = new();
 
+        ConcurrentBag<(IWallet wallet, CoinJoinClientException exception)> clientExceptions = [];
         Console.WriteLine($"We have {wallets.Count()} wallets total.");
         Stopwatch sw = new();
         sw.Start();
         // Select input coins from wallets
         Parallel.ForEach(wallets, wallet =>
         {
+            CoinJoinConfiguration coinJoinConfiguration = new("foo", 1_000_000, Constants.AbsoluteMinInputCount, false);
+            CoinJoinClient coinJoinClient = new(wallet.OutputProvider, CoinJoinCoinSelector.FromWallet(wallet), coinJoinConfiguration);
             var coinCandidates = wallet.GetCoinJoinCoinCandidates();
             var coinSelector = CoinJoinCoinSelector.FromWallet(wallet);
-            var selectedCoins = coinSelector.SelectCoinsForRound(coinCandidates, SelectionParams, wallet.LiquidityClue).ToHashSet();
-            foreach (var coin in selectedCoins)
+            // var selectedCoins = coinSelector.SelectCoinsForRound(coinCandidates, SelectionParams, wallet.LiquidityClue).ToHashSet();
+            IReadOnlyCollection<DumbCoin> selectedCoins = new HashSet<DumbCoin>();
+            try
             {
-                transaction.TryAddInput(coin);
+                selectedCoins =
+                    coinJoinClient.StartCoinJoinAsync(wallet, true, RoundParams).ToHashSet();
+                
+                foreach (var coin in selectedCoins)
+                {
+                    transaction.TryAddInput(coin);
+                }
+            }
+            catch (CoinJoinClientException e)
+            {
+                clientExceptions.Add((wallet, e));
             }
 
             Console.WriteLine($"{wallet.WalletId} : selected {selectedCoins.Count} coins.");
         });
         sw.Stop();
-        Console.WriteLine($"Choosing inputs took: {sw.Elapsed}. That is {sw.Elapsed / wallets.Count()} per wallet.");
         
+        Console.WriteLine($"Choosing inputs took: {sw.Elapsed}. That is {sw.Elapsed / wallets.Count()} per wallet.");
+        Console.WriteLine("Client exceptions:");
+        foreach (var e in clientExceptions)
+        {
+            Console.WriteLine($"{e.wallet.WalletId} exception: {e.exception.Message}");
+        }
+
         // Select outputs for each wallet
         sw.Restart();
 

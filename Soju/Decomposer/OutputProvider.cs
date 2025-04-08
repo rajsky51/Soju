@@ -5,12 +5,14 @@ namespace Soju.Decomposer;
 
 public class OutputProvider
 {
-	private readonly WasabiRandom Rng;
-	private readonly IEnumerable<ScriptType> supportedScriptTypes = [ScriptType.P2WPKH, ScriptType.Taproot];
+	private readonly WasabiRandom _random;
+	public readonly ScriptType[] supportedScriptTypes;
 
 	public OutputProvider(WasabiRandom? random = null)
 	{
-		Rng = random ?? SecureRandom.Instance;
+		_random = random ?? SecureRandom.Instance;
+		// NOTE: Should rework this so the scripts are chooseable
+		supportedScriptTypes = [ScriptType.P2WPKH, ScriptType.Taproot];
 	}
 
 	public virtual IEnumerable<Output> GetOutputs(
@@ -25,7 +27,7 @@ public class OutputProvider
 			roundParameters.AllowedOutputAmounts.Max,
 			availableVsize,
 			supportedScriptTypes,
-			Rng);
+			_random);
 
 		return amountDecomposer.Decompose(registeredCoinEffectiveValues, theirCoinEffectiveValues);
 	}
