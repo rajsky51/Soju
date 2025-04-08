@@ -1,8 +1,9 @@
 using NBitcoin;
 using System.Diagnostics;
+using Soju.Helpers;
 using Soju.Wallets;
 
-namespace Soju.Helpers;
+namespace Soju.Tests.Helpers;
 
 public static class BitcoinFactory
 {
