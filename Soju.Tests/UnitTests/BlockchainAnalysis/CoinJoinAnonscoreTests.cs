@@ -3,7 +3,7 @@ using Soju.Analysis;
 using Soju.Wallets;
 using Soju.Tests.Helpers;
 
-namespace Soju.Tests.UnitTests;
+namespace Soju.Tests.UnitTests.BlockchainAnalysis;
 
 public class CoinJoinAnonScoreTests
 {
