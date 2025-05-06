@@ -1,5 +1,5 @@
 using NBitcoin;
-using Soju.Analysis;
+using Soju.Blockchain.Analysis;
 using Soju.Wallets;
 using Soju.Tests.Helpers;
 

@@ -1,7 +1,10 @@
 using NBitcoin;
+using Soju.Blockchain.TransactionOutputs;
+using Soju.Blockchain.Transactions;
+using Soju.Crypto.Randomness;
 using Soju.Extensions;
 using Soju.Helpers;
-using Soju.Randomness;
+using Soju.WabiSabi.Models;
 using Soju.Wallets;
 
 namespace Soju;

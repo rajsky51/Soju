@@ -1,18 +1,14 @@
 using System.Collections.Immutable;
 using NBitcoin;
 using Soju.Json;
+using Soju.WabiSabi.Backend.Rounds;
+using Soju.WabiSabi.Client.CoinJoin.Client;
+using Soju.WabiSabi.Models;
 
 namespace Soju;
 
 public static class ParametersProvider
 {
-    public readonly static UtxoSelectionParameters DefaultUtxoParams = new UtxoSelectionParameters(
-        AllowedInputAmounts     : new(Money.Satoshis(10_000), Money.Coins(43_000)),
-        MinAllowedOutputAmount  : Money.Satoshis(10_000),
-        MiningFeeRate           : new(Money.Satoshis(20_000)),
-        AllowedInputScriptTypes : [ScriptType.Taproot, ScriptType.P2WPKH]
-    );
-
     public readonly static RoundParameters DefaultRoundParams = new RoundParameters(
         miningFeeRate        : new(Money.Satoshis(20_000)),
         maxSuggestedAmount   : Money.Coins(43_000),

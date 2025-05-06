@@ -1,7 +1,9 @@
 using NBitcoin;
-using Soju.Decomposer;
-using Soju.Randomness;
+using Soju.Crypto.Randomness;
+using Soju.Helpers;
 using Soju.Tests.Helpers;
+using Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
+using Soju.WabiSabi.Models;
 
 namespace Soju.Tests.UnitTests.WabiSabi.Client;
 
@@ -96,7 +98,7 @@ public class AmountDecomposerTests
 	public void DecomposeTests(int expectedResultCount, long target, long tolerance, int maxCount, long[] stdDenoms)
 	{
 		// var res = Decomposer.Decompose(target, tolerance, maxCount, stdDenoms);
-		var res = Decomposer.Decomposer.Decompose(target, tolerance, maxCount, stdDenoms);
+		var res = Decomposer.Decompose(target, tolerance, maxCount, stdDenoms);
 		Assert.Equal(expectedResultCount, res.Count());
 		Assert.All(res, x => Assert.True(x.Sum <= target && x.Sum >= target - tolerance));
 	}

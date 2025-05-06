@@ -1,5 +1,8 @@
 using NBitcoin;
 using System.Diagnostics;
+using Soju.Blockchain.Analysis;
+using Soju.Blockchain.TransactionOutputs;
+using Soju.Blockchain.Transactions;
 using Soju.Helpers;
 using Soju.Wallets;
 
@@ -74,5 +77,34 @@ public static class BitcoinFactory
         if (orderByAmount) tx.OrderOutputsByAmountDescending();
         
         return tx;
+    }
+
+    public static DumbCoin CreateDumbCoin(WalletId ownWalletId, Money amount, bool confirmed = true, int anonymitySet = 1)
+    {
+        
+    }
+    
+    public static SmartCoin CreateSmartCoin(Transaction tx, HdPubKey pubKey, Money amount, bool confirmed = true, int anonymitySet = 1)
+    {
+        var height = confirmed ? new Height(CryptoHelpers.RandomInt(0, 200)) : Height.Mempool;
+        pubKey.SetKeyState(KeyState.Used);
+        tx.Outputs.Add(new TxOut(amount, pubKey.GetAssumedScriptPubKey()));
+        tx.Inputs.Add(CreateOutPoint());
+        var stx = new SmartTransaction(tx, height);
+        pubKey.SetAnonymitySet(anonymitySet, stx.GetHash());
+        var sc = new SmartCoin(stx, (uint)tx.Outputs.Count - 1, pubKey);
+        BlockchainAnalyzer.SetIsSufficientlyDistancedFromExternalKeys(sc);
+        return sc;
+    }
+    
+    public static OutPoint CreateOutPoint()
+        => new(CreateUint256(), (uint)CryptoHelpers.RandomInt(0, 100));
+    
+    public static uint256 CreateUint256()
+    {
+        var rand = new UnsecureRandom();
+        var bytes = new byte[32];
+        rand.GetBytes(bytes);
+        return new uint256(bytes);
     }
 }

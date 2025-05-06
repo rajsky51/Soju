@@ -13,4 +13,11 @@
     <PackageReference Include="WabiSabi" Version="1.0.1.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Soju.Shared\Soju.Shared.csproj" />
+    <ProjectReference Include="..\Soju.Mixer.v1\Soju.Mixer.v1.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
 </Project>

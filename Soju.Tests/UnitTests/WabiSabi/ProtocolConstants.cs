@@ -1,6 +1,6 @@
 namespace Soju.Tests.UnitTests.WabiSabi;
 
-using RealProtocolConstants = Soju.ProtocolConstants;
+using RealProtocolConstants = Soju.WabiSabi.ProtocolConstants;
 
 public class ProtocolConstants
 {
