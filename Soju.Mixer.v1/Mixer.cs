@@ -15,15 +15,13 @@ namespace Soju;
 
 public class  Mixer : IMixer
 {
-    public UtxoSelectionParameters SelectionParams { get; set; }
-    public RoundParameters RoundParams { get; set; }
+    public RoundParameters RoundParams { get; }
     private readonly BlockchainAnalyzer _bcAnalyzer;
 
     public Mixer(RoundParameters roundParams)
     {
         RoundParams = roundParams;
-        SelectionParams = UtxoSelectionParameters.FromRoundParameters(roundParams, OutputProvider.DefaultSupportedScriptTypes);
-        // CHECK: Look more into why BlockchainAnalyzer isn't a static class.
+        // TODO: Look more into why BlockchainAnalyzer isn't a static class.
         _bcAnalyzer = new BlockchainAnalyzer();
     }
 
@@ -42,14 +40,10 @@ public class  Mixer : IMixer
         {
             CoinJoinConfiguration coinJoinConfiguration = new("foo", 1_000_000, Constants.AbsoluteMinInputCount, false);
             CoinJoinClient coinJoinClient = new(wallet.OutputProvider, CoinJoinCoinSelector.FromWallet(wallet), coinJoinConfiguration);
-            // var coinCandidates = wallet.GetCoinJoinCoinCandidates();
-            // var coinSelector = CoinJoinCoinSelector.FromWallet(wallet);
-            // var selectedCoins = coinSelector.SelectCoinsForRound(coinCandidates, SelectionParams, wallet.LiquidityClue).ToHashSet();
             HashSet<DumbCoin> selectedCoins = [];
             try
             {
-                selectedCoins =
-                    coinJoinClient.StartCoinJoin(wallet, true, RoundParams).ToHashSet();
+                selectedCoins = coinJoinClient.StartCoinJoin(wallet, true, RoundParams).ToHashSet();
                 
                 foreach (var coin in selectedCoins)
                 {
@@ -134,7 +128,7 @@ public class  Mixer : IMixer
         sw.Stop();
         Console.WriteLine($"Choosing outputs took: {sw.Elapsed}. That is {sw.Elapsed / wallets.Count()} per wallet.");
         
-        // CHECK: Setting new anonscores to every coin in the transaction.
+        // TODO: Setting new anonscores to every coin in the transaction.
         // Before it was done outside of mixer. Maybe if it should be outside
         // again. But I guess not, because now we can calculate anonscore gains
         // and put them into the CoinjoinResult if we wish to.

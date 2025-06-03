@@ -1,6 +1,6 @@
 using WabiSabi.Crypto.Randomness;
 
-namespace Soju.WabiSabi.Client.CoinJoin;
+namespace Soju.WabiSabi.Client.CoinJoin.Client;
 
 /// <summary>
 /// Generator of randomness for <see cref="CoinJoinCoinSelector"/>.

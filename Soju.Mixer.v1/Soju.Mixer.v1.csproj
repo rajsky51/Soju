@@ -2,10 +2,10 @@
 
     <PropertyGroup>
         <TargetFramework>net9.0</TargetFramework>
+        <RootNamespace>Soju</RootNamespace>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <RootNamespace>Soju</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>

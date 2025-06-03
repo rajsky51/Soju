@@ -172,8 +172,4 @@ public static class Constants
 	public static string ClientSupportBackendVersionText => ClientSupportBackendVersionMin == ClientSupportBackendVersionMax
 		? ClientSupportBackendVersionMin
 		: $"{ClientSupportBackendVersionMin} - {ClientSupportBackendVersionMax}";
-
-	// Soju additions
-	public static readonly Money DefaultPlebStopThreshold = Money.Coins(0.01m);
-	public const int DefaultAnonScoreTarget = 50;
 }

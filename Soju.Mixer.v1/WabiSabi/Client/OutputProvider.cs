@@ -1,21 +1,22 @@
 using NBitcoin;
 using Soju.WabiSabi.Backend.Rounds;
+using Soju.WabiSabi.Client.CoinJoin.Client;
+using Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
 using WabiSabi.Crypto.Randomness;
 
-namespace Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
+namespace Soju.WabiSabi.Client;
 
 public class OutputProvider
 {
-	// FIX: Should rework this so the scripts are chooseable and if so then delete this!!!
 	public static readonly ScriptType[] DefaultSupportedScriptTypes = [ScriptType.P2WPKH, ScriptType.Taproot];
 	
-	private readonly WasabiRandom _random;
 	public readonly ScriptType[] SupportedScriptTypes;
+	private readonly WasabiRandom _random;
 
-	public OutputProvider(WasabiRandom? random = null)
+	public OutputProvider(ScriptType[]? supportedScriptTypes = null, WasabiRandom? random = null)
 	{
 		_random = random ?? SecureRandom.Instance;
-		SupportedScriptTypes = DefaultSupportedScriptTypes;
+		SupportedScriptTypes = supportedScriptTypes ?? DefaultSupportedScriptTypes;
 	}
 
 	public virtual IEnumerable<Output> GetOutputs(

@@ -1,5 +1,4 @@
 using Soju.Extensions;
-using Soju.Helpers;
 
 namespace Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
 

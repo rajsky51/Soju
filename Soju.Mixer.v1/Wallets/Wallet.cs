@@ -1,7 +1,9 @@
 using NBitcoin;
+using Soju.Blockchain.Keys;
 using Soju.Blockchain.TransactionOutputs;
 using Soju.Helpers;
 using Soju.Models;
+using Soju.WabiSabi.Client;
 using Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
 
 namespace Soju.Wallets;
@@ -10,8 +12,7 @@ public class Wallet : IWallet
 {
     public string WalletName { get; }
     public WalletId WalletId { get; }
-    public bool IsUnderPlebStop => Coins.TotalAmount() <= Constants.DefaultPlebStopThreshold;
-    public bool IsMixable { get; }
+    public bool IsUnderPlebStop => Coins.TotalAmount() <= KeyManager.DefaultPlebStopThreshold;
 
     public OutputProvider OutputProvider { get; }
 
@@ -20,21 +21,17 @@ public class Wallet : IWallet
     public bool RedCoinIsolation { get; }
     public CoinjoinSkipFactors CoinjoinSkipFactors { get; }
 
-    public Money LiquidityClue { get; }
-
     public HashSet<DumbCoin> Coins = [];
 
     public Wallet(string walletName, int anonScoreTarget, Money liquidityClue, CoinjoinSkipFactors cjSkipFactors)
     {
         WalletName = walletName;
         WalletId = new WalletId(Guid.NewGuid());
-        IsMixable = true;
         OutputProvider = new OutputProvider();
         AnonScoreTarget = anonScoreTarget;
         ConsolidationMode = false;
         RedCoinIsolation = false;
         CoinjoinSkipFactors = cjSkipFactors;
-        LiquidityClue = liquidityClue;
     }
 
     public int GetPrivacyPercentage()
