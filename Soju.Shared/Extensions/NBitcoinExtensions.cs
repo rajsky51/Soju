@@ -3,6 +3,7 @@ using NBitcoin.DataEncoders;
 using NBitcoin.Protocol;
 using Soju.Blockchain.TransactionOutputs;
 using Soju.Helpers;
+using Soju.WabiSabi.Models;
 
 // using System.Collections.Generic;
 // using System.Diagnostics.CodeAnalysis;
@@ -375,6 +376,21 @@ public static class NBitcoinExtensions
 	{
 		var networkFee = feeRate.GetFee(virtualSize);
 		return amount - networkFee;
+	}
+	
+	// NOTE: Previous versions of the Wallet need EffectiveValue calculations with CoordinationFeeRate
+	public static Money EffectiveValue(this ICoin coin, FeeRate feeRate, CoordinationFeeRate coordinationFeeRate)
+		=> EffectiveValue(coin.TxOut.Value, virtualSize: coin.TxOut.ScriptPubKey.EstimateInputVsize(), feeRate, coordinationFeeRate);
+
+	public static Money EffectiveValue(this ISmartCoin coin, FeeRate feeRate, CoordinationFeeRate coordinationFeeRate)
+		=> EffectiveValue(coin.Amount, virtualSize: coin.ScriptType.EstimateInputVsize(), feeRate, coordinationFeeRate);
+
+	private static Money EffectiveValue(Money amount, int virtualSize, FeeRate feeRate, CoordinationFeeRate coordinationFeeRate)
+	{
+		var networkFee = feeRate.GetFee(virtualSize);
+		var coordinationFee = coordinationFeeRate.GetFee(amount);
+
+		return amount - networkFee - coordinationFee;
 	}
 
 // 	public static T FromBytes<T>(byte[] input) where T : IBitcoinSerializable, new()

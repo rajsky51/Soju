@@ -25,6 +25,6 @@ public static class CoinHelpers
 
 	public static Money TotalAmount(this IEnumerable<ISmartCoin> coins)
 	{
-		return coins.Select(x => x.Amount).Sum();
+		return coins.Sum(x => x.Amount);
 	}
 }

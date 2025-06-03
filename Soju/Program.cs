@@ -26,7 +26,6 @@ string wabiSabiConfigFileName = "Json/Test/WabiSabiConfig.json";
 string wabiSabiConfigString = File.ReadAllText(wabiSabiConfigFileName);
 WabiSabiConfig wabiSabiConfig = JsonSerializer.Deserialize<WabiSabiConfig>(wabiSabiConfigString, jsonOptions)!;
 
-
 string scenarioFileName = "Json/Test/Scenario.json";
 string scenarioString = File.ReadAllText(scenarioFileName);
 CoinjoinScenario scenario = JsonSerializer.Deserialize<CoinjoinScenario>(scenarioString, jsonOptions)!;
@@ -83,8 +82,7 @@ JsonSerializerOptions serializerOptions = new()
 serializerOptions.Converters.Add(new DumbTransactionConverter(wallets));
 serializerOptions.Converters.Add(new CoinjoinEnumerableConverter());
 
-// Mixer mixer = new(utxoSelectionParams, roundParams);
-long nRounds = scenario.Rounds == 0 ? long.MaxValue : scenario.Rounds; // long.MaxValue is basically infinity
+long nRounds = scenario.Rounds == 0 ? long.MaxValue : scenario.Rounds; // NOTE: long.MaxValue is basically infinity
 for (long i = 0; i < nRounds; i++) 
 {
     Console.WriteLine(i);

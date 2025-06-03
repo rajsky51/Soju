@@ -1,4 +1,4 @@
-namespace Soju.Helpers;
+namespace Soju.WabiSabi.Client;
 
 public class ReverseComparer : IComparer<long>
 {
