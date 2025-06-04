@@ -1,8 +1,10 @@
 using System.Collections.Immutable;
 using NBitcoin;
 using NBitcoin.Policy;
+using WabiSabi.Crypto.Randomness;
 using Soju.WabiSabi.Models;
 using Soju.WabiSabi.Models.MultipartyTransaction;
+using Soju.WabiSabi.Client;
 
 namespace Soju.WabiSabi.Backend.Rounds;
 
@@ -68,6 +70,10 @@ public record RoundParameters
 	public int MaxTransactionSize { get; init; } = StandardTransactionPolicy.MaxTransactionSize ?? 100_000;
 	public FeeRate MinRelayTxFee { get; init; } = StandardTransactionPolicy.MinRelayTxFee
 												  ?? new FeeRate(Money.Satoshis(1000));
+	
+	// TODO: Added due to compatibility with v2.0.4.1b and lower -> rework (these data member were private!)
+	public int MaxVsizeInputOutputPair => AllowedOutputTypes.Max(x => x.EstimateInputVsize() + x.EstimateOutputVsize());
+	public ScriptType MaxVsizeInputOutputPairScriptType => AllowedOutputTypes.MaxBy(x => x.EstimateInputVsize() + x.EstimateOutputVsize());
 
 	// public static RoundParameters Create(
 	// 	WabiSabiConfig wabiSabiConfig,
