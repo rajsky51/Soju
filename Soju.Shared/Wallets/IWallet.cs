@@ -17,7 +17,4 @@ public interface IWallet
 	CoinjoinSkipFactors CoinjoinSkipFactors { get; }
 
 	bool IsWalletPrivate();
-	IEnumerable<DumbCoin> GetCoinJoinCoinCandidates();
-	int RemoveCoins(IEnumerable<DumbCoin> coinsToRemove);
-	int AddCoins(IEnumerable<DumbCoin> coinsToAdd);
 }

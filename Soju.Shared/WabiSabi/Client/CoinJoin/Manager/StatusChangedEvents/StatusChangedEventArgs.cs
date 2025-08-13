@@ -1,4 +1,4 @@
-namespace Soju.WabiSabi.Client.CoinJoin.Manager.StatusChangedEvents;
+namespace Soju.WabiSabi.Client.StatusChangedEvents;
 
 public enum CoinjoinError
 {

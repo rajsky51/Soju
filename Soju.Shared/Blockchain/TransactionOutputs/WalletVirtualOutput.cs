@@ -1,10 +1,12 @@
 using NBitcoin;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Soju.Blockchain.TransactionOutputs;
 
 public class WalletVirtualOutput
 {
-    public WalletVirtualOutput(byte[] id, ISet<DumbCoin> coins)
+    public WalletVirtualOutput(byte[] id, ISet<SmartCoin> coins)
     {
         Id = id;
         Coins = coins;
@@ -13,5 +15,5 @@ public class WalletVirtualOutput
 
     public byte[] Id { get; }
     public Money Amount { get; }
-    public ISet<DumbCoin> Coins { get; }
+    public ISet<SmartCoin> Coins { get; }
 }

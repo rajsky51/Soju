@@ -1,25 +1,25 @@
 using NBitcoin;
+using System.Linq;
+using System.Collections.Generic;
 using Soju.WabiSabi.Backend.Rounds;
-using Soju.WabiSabi.Client.CoinJoin.Client;
-using Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
 using WabiSabi.Crypto.Randomness;
+using Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
 
 namespace Soju.WabiSabi.Client;
 
 public class OutputProvider
 {
-	public static readonly ScriptType[] DefaultSupportedScriptTypes = [ScriptType.P2WPKH, ScriptType.Taproot];
-	
-	public readonly ScriptType[] SupportedScriptTypes;
-	private readonly WasabiRandom _random;
-
-	public OutputProvider(ScriptType[]? supportedScriptTypes = null, WasabiRandom? random = null)
+	public OutputProvider(IDestinationProvider destinationProvider, WasabiRandom? random = null)
 	{
+		DestinationProvider = destinationProvider;
 		_random = random ?? SecureRandom.Instance;
-		SupportedScriptTypes = supportedScriptTypes ?? DefaultSupportedScriptTypes;
 	}
 
-	public virtual IEnumerable<Output> GetOutputs(
+	internal IDestinationProvider DestinationProvider { get; }
+	private readonly WasabiRandom _random;
+
+	public virtual IEnumerable<TxOut> GetOutputs(
+		uint256 roundId,
 		RoundParameters roundParameters,
 		IEnumerable<Money> registeredCoinEffectiveValues,
 		IEnumerable<Money> theirCoinEffectiveValues,
@@ -27,12 +27,35 @@ public class OutputProvider
 	{
 		AmountDecomposer amountDecomposer = new(
 			roundParameters.MiningFeeRate,
-			roundParameters.CalculateMinReasonableOutputAmount(SupportedScriptTypes),
+			roundParameters.CalculateMinReasonableOutputAmount(DestinationProvider.SupportedScriptTypes),
 			roundParameters.AllowedOutputAmounts.Max,
 			availableVsize,
-			SupportedScriptTypes,
+			DestinationProvider.SupportedScriptTypes,
 			_random);
 
-		return amountDecomposer.Decompose(registeredCoinEffectiveValues, theirCoinEffectiveValues);
+		var outputValues = amountDecomposer.Decompose(registeredCoinEffectiveValues, theirCoinEffectiveValues).ToArray();
+		return GetTxOuts(outputValues, DestinationProvider);
+	}
+
+	internal static IEnumerable<TxOut> GetTxOuts(IEnumerable<Output> outputValues, IDestinationProvider destinationProvider)
+	{
+		// Get as many destinations as outputs we need.
+		var taprootOutputCount = outputValues.Count(output => output.ScriptType is ScriptType.Taproot);
+		var taprootScripts = new Stack<IDestination>(destinationProvider.GetNextDestinations(taprootOutputCount, preferTaproot: true));
+		var segwitOutputCount = outputValues.Count(output => output.ScriptType is ScriptType.P2WPKH);
+		var segwitScripts = new Stack<IDestination>(destinationProvider.GetNextDestinations(segwitOutputCount, preferTaproot: false));
+
+		List<TxOut> outputTxOuts = new();
+		foreach (var output in outputValues)
+		{
+			var destinationStack = output.ScriptType is ScriptType.Taproot
+				? taprootScripts
+				: segwitScripts;
+
+			var destination = destinationStack.Pop();
+			var txOut = new TxOut(output.Amount, destination.ScriptPubKey);
+			outputTxOuts.Add(txOut);
+		}
+		return outputTxOuts;
 	}
 }

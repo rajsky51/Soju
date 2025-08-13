@@ -5,7 +5,7 @@ using Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
 using Soju.WabiSabi.Models;
 using WabiSabi.Crypto.Randomness;
 
-namespace Soju.WabiSabi.Client.CoinJoin.Client;
+namespace Soju.WabiSabi.Client;
 
 public record UtxoSelectionParameters(
 	MoneyRange AllowedInputAmounts,

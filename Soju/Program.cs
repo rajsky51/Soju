@@ -22,10 +22,12 @@ JsonSerializerOptions jsonOptions = new()
     WriteIndented = true
 };
 
+// NOTE: Load WabiSabiConfig
 string wabiSabiConfigFileName = "Json/Test/WabiSabiConfig.json";
 string wabiSabiConfigString = File.ReadAllText(wabiSabiConfigFileName);
 WabiSabiConfig wabiSabiConfig = JsonSerializer.Deserialize<WabiSabiConfig>(wabiSabiConfigString, jsonOptions)!;
 
+// NOTE: Load scenario
 string scenarioFileName = "Json/Test/Scenario.json";
 string scenarioString = File.ReadAllText(scenarioFileName);
 CoinjoinScenario scenario = JsonSerializer.Deserialize<CoinjoinScenario>(scenarioString, jsonOptions)!;
@@ -73,7 +75,7 @@ for (int i = 0; i < nWallets; i++)
     wallets.Add(wallet);
 }
 
-// NOTE: Always creates the file
+// NOTE: Always creating the JSON file
 StreamWriter jsonFile = new("../coinjoins.json", false); 
 JsonSerializerOptions serializerOptions = new()
 {

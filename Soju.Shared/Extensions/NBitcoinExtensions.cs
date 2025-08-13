@@ -4,6 +4,7 @@ using NBitcoin.Protocol;
 using Soju.Blockchain.TransactionOutputs;
 using Soju.Helpers;
 using Soju.WabiSabi.Models;
+using Soju.Crypto;
 
 // using System.Collections.Generic;
 // using System.Diagnostics.CodeAnalysis;
@@ -14,7 +15,6 @@ using Soju.WabiSabi.Models;
 // using WalletWasabi.Blockchain.Keys;
 // using WalletWasabi.Blockchain.TransactionOutputs;
 // using WalletWasabi.Blockchain.Transactions;
-// using WalletWasabi.Crypto;
 // using WalletWasabi.Helpers;
 // using WalletWasabi.Logging;
 // using WalletWasabi.Models;
@@ -57,16 +57,16 @@ public static class NBitcoinExtensions
 // 		}
 // 	}
 
-// 	public static string ToHex(this IBitcoinSerializable me)
-// 	{
-// 		return ByteHelpers.ToHex(me.ToBytes());
-// 	}
+	public static string ToHex(this IBitcoinSerializable me)
+	{
+		return ByteHelpers.ToHex(me.ToBytes());
+	}
 
-// 	public static void FromHex(this IBitcoinSerializable me, string hex)
-// 	{
-// 		Guard.NotNullOrEmptyOrWhitespace(nameof(hex), hex);
-// 		me.FromBytes(ByteHelpers.FromHex(hex));
-// 	}
+	public static void FromHex(this IBitcoinSerializable me, string hex)
+	{
+		Guard.NotNullOrEmptyOrWhitespace(nameof(hex), hex);
+		me.FromBytes(ByteHelpers.FromHex(hex));
+	}
 
 // 	/// <summary>
 // 	/// Based on transaction data, it decides if it's possible that native segwit script played a par in this transaction.
@@ -335,8 +335,8 @@ public static class NBitcoinExtensions
 // 		return sanityFee;
 // 	}
 
-	public static int EstimateOutputVsize(this Script scriptPubKey) =>
-		new TxOut(Money.Zero, scriptPubKey).GetSerializedSize();
+//	public static int EstimateOutputVsize(this Script scriptPubKey) =>
+//	 	new TxOut(Money.Zero, scriptPubKey).GetSerializedSize();
 
 	public static int EstimateInputVsize(this Script scriptPubKey) =>
 		scriptPubKey.GetScriptType().EstimateInputVsize();
@@ -366,13 +366,13 @@ public static class NBitcoinExtensions
 // 	public static Money EffectiveCost(this TxOut output, FeeRate feeRate) =>
 // 		output.Value + feeRate.GetFee(output.ScriptPubKey.EstimateOutputVsize());
 
-	public static Money EffectiveValue(this ICoin coin, FeeRate feeRate)
-		=> EffectiveValue(coin.TxOut.Value, virtualSize: coin.TxOut.ScriptPubKey.EstimateInputVsize(), feeRate);
+	// public static Money EffectiveValue(this ICoin coin, FeeRate feeRate)
+	// 	=> EffectiveValue(coin.TxOut.Value, virtualSize: coin.TxOut.ScriptPubKey.EstimateInputVsize(), feeRate);
 
 	public static Money EffectiveValue(this ISmartCoin coin, FeeRate feeRate)
 		=> EffectiveValue(coin.Amount, virtualSize: coin.ScriptType.EstimateInputVsize(), feeRate);
 
-	private static Money EffectiveValue(Money amount, int virtualSize, FeeRate feeRate)
+	public static Money EffectiveValue(Money amount, int virtualSize, FeeRate feeRate)
 	{
 		var networkFee = feeRate.GetFee(virtualSize);
 		return amount - networkFee;
@@ -393,32 +393,32 @@ public static class NBitcoinExtensions
 		return amount - networkFee - coordinationFee;
 	}
 
-// 	public static T FromBytes<T>(byte[] input) where T : IBitcoinSerializable, new()
-// 	{
-// 		BitcoinStream inputStream = new(input);
-// 		var instance = new T();
-// 		inputStream.ReadWrite(instance);
-// 		if (inputStream.Inner.Length != inputStream.Inner.Position)
-// 		{
-// 			throw new FormatException("Expected end of stream");
-// 		}
+	public static T FromBytes<T>(byte[] input) where T : IBitcoinSerializable, new()
+	{
+		BitcoinStream inputStream = new(input);
+		var instance = new T();
+		inputStream.ReadWrite(instance);
+		if (inputStream.Inner.Length != inputStream.Inner.Position)
+		{
+			throw new FormatException("Expected end of stream");
+		}
 
-// 		return instance;
-// 	}
+		return instance;
+	}
 
-// 	/// <summary>
-// 	/// Extracts a unique public key identifier. If it can't do that, then it returns the scriptPubKey byte array.
-// 	/// </summary>
-// 	public static byte[] ExtractKeyId(this Script scriptPubKey)
-// 	{
-// 		return scriptPubKey.TryGetScriptType() switch
-// 		{
-// 			ScriptType.P2WPKH => PayToWitPubKeyHashTemplate.Instance.ExtractScriptPubKeyParameters(scriptPubKey)!.ToBytes(),
-// 			ScriptType.P2PKH => PayToPubkeyHashTemplate.Instance.ExtractScriptPubKeyParameters(scriptPubKey)!.ToBytes(),
-// 			ScriptType.P2PK => PayToPubkeyTemplate.Instance.ExtractScriptPubKeyParameters(scriptPubKey)!.ToBytes(),
-// 			_ => scriptPubKey.ToBytes()
-// 		};
-// 	}
+	/// <summary>
+	/// Extracts a unique public key identifier. If it can't do that, then it returns the scriptPubKey byte array.
+	/// </summary>
+	public static byte[] ExtractKeyId(this Script scriptPubKey)
+	{
+		return scriptPubKey.TryGetScriptType() switch
+		{
+			ScriptType.P2WPKH => PayToWitPubKeyHashTemplate.Instance.ExtractScriptPubKeyParameters(scriptPubKey)!.ToBytes(),
+			ScriptType.P2PKH => PayToPubkeyHashTemplate.Instance.ExtractScriptPubKeyParameters(scriptPubKey)!.ToBytes(),
+			ScriptType.P2PK => PayToPubkeyTemplate.Instance.ExtractScriptPubKeyParameters(scriptPubKey)!.ToBytes(),
+			_ => scriptPubKey.ToBytes()
+		};
+	}
 
 	public static ScriptType GetScriptType(this Script script)
 	{
@@ -438,43 +438,43 @@ public static class NBitcoinExtensions
 		return null;
 	}
 
-// 	public static BitcoinSecret GetBitcoinSecret(this ExtKey hdKey, Network network, Script scriptPubKey)
-// 		=> GetBitcoinSecret(network, hdKey.PrivateKey, scriptPubKey);
+	public static BitcoinSecret GetBitcoinSecret(this ExtKey hdKey, Network network, Script scriptPubKey)
+		=> GetBitcoinSecret(network, hdKey.PrivateKey, scriptPubKey);
 
-// 	public static BitcoinSecret GetBitcoinSecret(Network network, Key privateKey, Script scriptPubKey)
-// 	{
-// 		var derivedScriptPubKeyType = scriptPubKey switch
-// 		{
-// 			_ when scriptPubKey.IsScriptType(ScriptType.P2WPKH) => ScriptPubKeyType.Segwit,
-// 			_ when scriptPubKey.IsScriptType(ScriptType.Taproot) => ScriptPubKeyType.TaprootBIP86,
-// 			_ => throw new NotSupportedException("Not supported script type.")
-// 		};
+	public static BitcoinSecret GetBitcoinSecret(Network network, Key privateKey, Script scriptPubKey)
+	{
+		var derivedScriptPubKeyType = scriptPubKey switch
+		{
+			_ when scriptPubKey.IsScriptType(ScriptType.P2WPKH) => ScriptPubKeyType.Segwit,
+			_ when scriptPubKey.IsScriptType(ScriptType.Taproot) => ScriptPubKeyType.TaprootBIP86,
+			_ => throw new NotSupportedException("Not supported script type.")
+		};
 
-// 		if (privateKey.PubKey.GetScriptPubKey(derivedScriptPubKeyType) != scriptPubKey)
-// 		{
-// 			throw new InvalidOperationException("The key cannot generate the utxo scriptPubKey. This could happen if the wallet password is not the correct one.");
-// 		}
+		if (privateKey.PubKey.GetScriptPubKey(derivedScriptPubKeyType) != scriptPubKey)
+		{
+			throw new InvalidOperationException("The key cannot generate the utxo scriptPubKey. This could happen if the wallet password is not the correct one.");
+		}
 
-// 		return privateKey.GetBitcoinSecret(network);
-// 	}
+		return privateKey.GetBitcoinSecret(network);
+	}
 
-// 	public static OwnershipProof GetOwnershipProof(Key masterKey, BitcoinSecret secret, Script scriptPubKey, CoinJoinInputCommitmentData commitmentData)
-// 	{
-// 		var identificationMasterKey = Slip21Node.FromSeed(masterKey.ToBytes());
-// 		var identificationKey = identificationMasterKey.DeriveChild("SLIP-0019")
-// 			.DeriveChild("Ownership identification key").Key;
+	public static OwnershipProof GetOwnershipProof(Key masterKey, BitcoinSecret secret, Script scriptPubKey, CoinJoinInputCommitmentData commitmentData)
+	{
+		var identificationMasterKey = Slip21Node.FromSeed(masterKey.ToBytes());
+		var identificationKey = identificationMasterKey.DeriveChild("SLIP-0019")
+			.DeriveChild("Ownership identification key").Key;
 
-// 		var signingKey = secret.PrivateKey;
-// 		var ownershipProof = OwnershipProof.GenerateCoinJoinInputProof(
-// 			signingKey,
-// 			new OwnershipIdentifier(identificationKey, scriptPubKey),
-// 			commitmentData,
-// 			scriptPubKey.IsScriptType(ScriptType.P2WPKH)
-// 				? ScriptPubKeyType.Segwit
-// 				: ScriptPubKeyType.TaprootBIP86);
+		var signingKey = secret.PrivateKey;
+		var ownershipProof = OwnershipProof.GenerateCoinJoinInputProof(
+			signingKey,
+			new OwnershipIdentifier(identificationKey, scriptPubKey),
+			commitmentData,
+			scriptPubKey.IsScriptType(ScriptType.P2WPKH)
+				? ScriptPubKeyType.Segwit
+				: ScriptPubKeyType.TaprootBIP86);
 
-// 		return ownershipProof;
-// 	}
+		return ownershipProof;
+	}
 
 // 	public static Money GetFeeWithZero(this FeeRate feeRate, int virtualSize) =>
 // 		feeRate == FeeRate.Zero ? Money.Zero : feeRate.GetFee(virtualSize);

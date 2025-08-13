@@ -1,4 +1,4 @@
-using Soju.WabiSabi.Client.CoinJoin.Manager.StatusChangedEvents;
+using Soju.WabiSabi.Client.StatusChangedEvents;
 
 namespace Soju.WabiSabi.Client.CoinJoin.Client;
 

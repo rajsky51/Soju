@@ -52,7 +52,7 @@ public class DumbCoinHistoryGenerator
             DumbTransaction inputTx = new();
         
             ScriptType inputScript = AllowedScripts.RandomElement(_rng);
-            Money inputRawAmount = _rng.GetMoney(InputAmountRange);
+            Money inputRawAmount = MyExtensions.GetRandomMoney(_rng, InputAmountRange);
             WalletId inputWalletId = coin.WalletId; //_rng.GetBool() ? coin.WalletId : new WalletId(Guid.NewGuid());
             DumbCoin newInputCoin = inputTx.AddOutputCoin(inputRawAmount + FeeRate.GetFee(inputScript.EstimateOutputVsize()), inputScript, 1.0, inputWalletId);
         
