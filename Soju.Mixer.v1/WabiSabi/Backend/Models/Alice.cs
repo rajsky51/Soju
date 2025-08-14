@@ -1,24 +1,28 @@
 using NBitcoin;
+using Soju.Crypto;
+using Soju.Extensions;
 using Soju.WabiSabi.Backend.Rounds;
-using Soju.MyNBitcoin;
 
 namespace Soju.WabiSabi.Backend.Models;
 
 public class Alice
 {
-    public Alice(MyCoin coin, Round round, Guid id)
+    public Alice(Coin coin, OwnershipProof ownershipProof, Round round, Guid id)
     {
+        // TODO init syntax?
         Round = round;
         Coin = coin;
+        OwnershipProof = ownershipProof;
         Id = id;
     }
 
     public Round Round { get; }
     public Guid Id { get; }
     public DateTimeOffset Deadline { get; set; } = DateTimeOffset.UtcNow;
-    public MyCoin Coin { get; }
+    public Coin Coin { get; }
+    public OwnershipProof OwnershipProof { get; }
     public Money TotalInputAmount => Coin.Amount;
-    public int TotalInputVsize => Coin.ScriptPubKeyType.EstimateInputVsize();
+    public int TotalInputVsize => Coin.ScriptPubKey.EstimateInputVsize();
 
     public bool ConfirmedConnection { get; set; } = false;
     public bool ReadyToSign { get; set; }
