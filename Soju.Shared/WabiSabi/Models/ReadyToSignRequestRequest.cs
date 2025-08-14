@@ -6,14 +6,14 @@ namespace Soju.WabiSabi.Models;
 
 public record ReadyToSignRequestRequest
 {
-    [JsonConstructor]
-    public ReadyToSignRequestRequest(
-        uint256 roundId,
-        Guid aliceId)
-    {
-        RoundId = roundId;
-        AliceId = aliceId;
-    }
-    public uint256 RoundId { get; }
-    public Guid AliceId { get; }
+	[JsonConstructor]
+	public ReadyToSignRequestRequest(
+		uint256 roundId,
+		Guid aliceId)
+	{
+		RoundId = roundId;
+		AliceId = aliceId;
+	}
+	public uint256 RoundId { get; }
+	public Guid AliceId { get; }
 }

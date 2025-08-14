@@ -2,7 +2,7 @@ namespace Soju.Blockchain.Keys;
 
 public enum KeyState
 {
-    Clean,
-    Locked,
-    Used
+	Clean,
+	Locked,
+	Used
 }

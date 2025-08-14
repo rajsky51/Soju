@@ -15,17 +15,17 @@ namespace Soju;
 
 public class  Mixer : IMixer
 {
-    public RoundParameters RoundParams { get; }
-    private readonly BlockchainAnalyzer _bcAnalyzer;
+	public RoundParameters RoundParams { get; }
+	private readonly BlockchainAnalyzer _bcAnalyzer;
 
-    public Mixer(RoundParameters roundParams)
-    {
-        RoundParams = roundParams;
-        // TODO: Look more into why BlockchainAnalyzer isn't a static class.
-        _bcAnalyzer = new BlockchainAnalyzer();
-    }
+	public Mixer(RoundParameters roundParams)
+	{
+		RoundParams = roundParams;
+		// TODO: Look more into why BlockchainAnalyzer isn't a static class.
+		_bcAnalyzer = new BlockchainAnalyzer();
+	}
 
-    public CoinjoinResult CompleteMix(IEnumerable<IWallet> participatingWallets)
-    {
-    }
+	public CoinjoinResult CompleteMix(IEnumerable<IWallet> participatingWallets)
+	{
+	}
 }

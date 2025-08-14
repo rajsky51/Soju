@@ -7,7 +7,7 @@ namespace Soju.WabiSabi.Client;
 
 public interface IKeyChain
 {
-    OwnershipProof GetOwnershipProof(IDestination destination, CoinJoinInputCommitmentData committedData);
+	OwnershipProof GetOwnershipProof(IDestination destination, CoinJoinInputCommitmentData committedData);
 
-    Transaction Sign(Transaction transaction, Coin coin, PrecomputedTransactionData precomputeTransactionData);
+	Transaction Sign(Transaction transaction, Coin coin, PrecomputedTransactionData precomputeTransactionData);
 }

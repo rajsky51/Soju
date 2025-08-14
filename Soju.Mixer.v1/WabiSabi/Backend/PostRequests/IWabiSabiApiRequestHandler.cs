@@ -6,19 +6,19 @@ namespace Soju.WabiSabi.Backend.PostRequests;
 
 public interface IWabiSabiApiRequestHandler
 {
-    InputRegistrationResponse RegisterInput(InputRegistrationRequest request);
+	InputRegistrationResponse RegisterInput(InputRegistrationRequest request);
 
-    ConnectionConfirmationResponse ConfirmConnection(ConnectionConfirmationRequest request);
+	ConnectionConfirmationResponse ConfirmConnection(ConnectionConfirmationRequest request);
 
-    void RegisterOutput(OutputRegistrationRequest request);
+	void RegisterOutput(OutputRegistrationRequest request);
 
-    void RemoveInput(InputsRemovalRequest request);
+	void RemoveInput(InputsRemovalRequest request);
 
-    void SignTransaction(TransactionSignaturesRequest request);
+	void SignTransaction(TransactionSignaturesRequest request);
 
-    ReissueCredentialResponse Reissuance(ReissueCredentialRequest request);
+	ReissueCredentialResponse Reissuance(ReissueCredentialRequest request);
 
-    RoundStateResponse GetStatus(RoundStateRequest request);
+	RoundStateResponse GetStatus(RoundStateRequest request);
 
-    void ReadyToSign(ReadyToSignRequestRequest request);
+	void ReadyToSign(ReadyToSignRequestRequest request);
 }

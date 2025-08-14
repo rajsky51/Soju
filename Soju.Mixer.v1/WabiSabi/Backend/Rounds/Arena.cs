@@ -620,7 +620,7 @@ public partial class Arena : PeriodicRunner
 
 		// The coordinator must pay output creation at round's FeeRate, but then he can wait to spend the output.
 		var minEconomicalOutput = round.Parameters.MiningFeeRate.GetFee(coordinatorScriptPubKey.EstimateOutputVsize()) +
-		                          new FeeRate(1.0m).GetFee(coordinatorScriptPubKey.EstimateInputVsize());
+								  new FeeRate(1.0m).GetFee(coordinatorScriptPubKey.EstimateInputVsize());
 
 		if (availableCoordinationFee > minEconomicalOutput)
 		{

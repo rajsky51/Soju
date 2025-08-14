@@ -7,9 +7,9 @@ namespace Soju.WabiSabi.Client;
 public abstract record CoinJoinResult;
 
 public record SuccessfulCoinJoinResult(
-    ImmutableList<SmartCoin> Coins,
-    ImmutableList<Script> OutputScripts,
-    Transaction UnsignedCoinJoin) : CoinJoinResult;
+	ImmutableList<SmartCoin> Coins,
+	ImmutableList<Script> OutputScripts,
+	Transaction UnsignedCoinJoin) : CoinJoinResult;
 
 public record FailedCoinJoinResult : CoinJoinResult;
 

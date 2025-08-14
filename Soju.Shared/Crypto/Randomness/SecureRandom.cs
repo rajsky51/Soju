@@ -5,20 +5,20 @@ namespace Soju.Crypto.Randomness;
 
 public class SecureRandom : WasabiRandom
 {
-    public static readonly SecureRandom Instance = new();
+	public static readonly SecureRandom Instance = new();
 
-    public override void GetBytes(byte[] buffer)
-    {
-        RandomNumberGenerator.Fill(buffer);
-    }
+	public override void GetBytes(byte[] buffer)
+	{
+		RandomNumberGenerator.Fill(buffer);
+	}
 
-    public override void GetBytes(Span<byte> buffer)
-    {
-        RandomNumberGenerator.Fill(buffer);
-    }
+	public override void GetBytes(Span<byte> buffer)
+	{
+		RandomNumberGenerator.Fill(buffer);
+	}
 
-    public override int GetInt(int fromInclusive, int toExclusive)
-    {
-        return RandomNumberGenerator.GetInt32(fromInclusive, toExclusive);
-    }
+	public override int GetInt(int fromInclusive, int toExclusive)
+	{
+		return RandomNumberGenerator.GetInt32(fromInclusive, toExclusive);
+	}
 }

@@ -5,9 +5,9 @@ namespace Soju.Helpers;
 
 public class TxOutEqualityComparer : IEqualityComparer<TxOut>
 {
-    public static readonly TxOutEqualityComparer Default = new();
+	public static readonly TxOutEqualityComparer Default = new();
 
-    public bool Equals(TxOut? x, TxOut? y) => (x?.Value, x?.ScriptPubKey) == (y?.Value, y?.ScriptPubKey);
+	public bool Equals(TxOut? x, TxOut? y) => (x?.Value, x?.ScriptPubKey) == (y?.Value, y?.ScriptPubKey);
 
-    public int GetHashCode(TxOut txOut) => (txOut.Value, txOut.ScriptPubKey).GetHashCode();
+	public int GetHashCode(TxOut txOut) => (txOut.Value, txOut.ScriptPubKey).GetHashCode();
 }

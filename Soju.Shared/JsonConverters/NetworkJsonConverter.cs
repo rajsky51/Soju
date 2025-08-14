@@ -9,31 +9,31 @@ namespace Soju.JsonConverters;
 /// <seealso cref="JsonConverter" />
 public class NetworkJsonConverter : JsonConverter<Network>
 {
-    /// <inheritdoc />
-    public override Network? ReadJson(JsonReader reader, Type objectType, Network? existingValue, bool hasExistingValue, JsonSerializer serializer)
-    {
-        // check additional strings that are not checked by GetNetwork
-        var networkString = ((string?)reader.Value)?.Trim();
+	/// <inheritdoc />
+	public override Network? ReadJson(JsonReader reader, Type objectType, Network? existingValue, bool hasExistingValue, JsonSerializer serializer)
+	{
+		// check additional strings that are not checked by GetNetwork
+		var networkString = ((string?)reader.Value)?.Trim();
 
-        if (networkString is null)
-        {
-            throw new ArgumentNullException(nameof(networkString));
-        }
+		if (networkString is null)
+		{
+			throw new ArgumentNullException(nameof(networkString));
+		}
 
-        if ("regression".Equals(networkString, StringComparison.OrdinalIgnoreCase))
-        {
-            return Network.RegTest;
-        }
+		if ("regression".Equals(networkString, StringComparison.OrdinalIgnoreCase))
+		{
+			return Network.RegTest;
+		}
 
-        return Network.GetNetwork(networkString);
-    }
+		return Network.GetNetwork(networkString);
+	}
 
-    /// <inheritdoc />
-    public override void WriteJson(JsonWriter writer, Network? value, JsonSerializer serializer)
-    {
-        string network = value?.ToString()
-                         ?? throw new ArgumentNullException(nameof(value));
+	/// <inheritdoc />
+	public override void WriteJson(JsonWriter writer, Network? value, JsonSerializer serializer)
+	{
+		string network = value?.ToString()
+						 ?? throw new ArgumentNullException(nameof(value));
 
-        writer.WriteValue(network);
-    }
+		writer.WriteValue(network);
+	}
 }

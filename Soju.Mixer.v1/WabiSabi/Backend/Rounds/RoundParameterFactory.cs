@@ -4,19 +4,19 @@ namespace Soju.WabiSabi.Backend.Rounds;
 
 public class RoundParameterFactory
 {
-    public RoundParameterFactory(WabiSabiConfig config, Network network)
-    {
-        Config = config;
-        Network = network;
-    }
+	public RoundParameterFactory(WabiSabiConfig config, Network network)
+	{
+		Config = config;
+		Network = network;
+	}
 
-    public WabiSabiConfig Config { get; }
-    public Network Network { get; }
+	public WabiSabiConfig Config { get; }
+	public Network Network { get; }
 
-    public virtual RoundParameters CreateRoundParameter(FeeRate feeRate, Money maxSuggestedAmount) =>
-        RoundParameters.Create(
-            Config,
-            Network,
-            feeRate,
-            maxSuggestedAmount);
+	public virtual RoundParameters CreateRoundParameter(FeeRate feeRate, Money maxSuggestedAmount) =>
+		RoundParameters.Create(
+			Config,
+			Network,
+			feeRate,
+			maxSuggestedAmount);
 }

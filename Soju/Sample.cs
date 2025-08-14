@@ -8,15 +8,15 @@ using System.Threading.Tasks;
 
 namespace Soju
 {
-    public static class Sample
-    {
-        static Sample()
-        {
-            var path = "Sample.txt";
-            
-            Amounts = File.ReadAllLines(path).Select(x => decimal.Parse(x, CultureInfo.InvariantCulture)).ToArray();
-        }
+	public static class Sample
+	{
+		static Sample()
+		{
+			var path = "Sample.txt";
+			
+			Amounts = File.ReadAllLines(path).Select(x => decimal.Parse(x, CultureInfo.InvariantCulture)).ToArray();
+		}
 
-        public static decimal[] Amounts { get; }
-    }
+		public static decimal[] Amounts { get; }
+	}
 }

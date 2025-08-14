@@ -17,9 +17,9 @@ using Soju.Wallets;
 
 JsonSerializerOptions jsonOptions = new()
 {
-    AllowTrailingCommas = true,
-    RespectRequiredConstructorParameters = true,
-    WriteIndented = true
+	AllowTrailingCommas = true,
+	RespectRequiredConstructorParameters = true,
+	WriteIndented = true
 };
 
 // NOTE: Load WabiSabiConfig
@@ -56,30 +56,30 @@ List<IWallet> wallets = new(nWallets);
 
 for (int i = 0; i < nWallets; i++)
 {
-    WalletConfig walletConfig = scenario.Wallets[i];
-    float anonScoreTarget = scenario.DefaultAnonScoreTarget;
-    if (walletConfig.AnonScoreTarget is not null) float.TryParse(walletConfig.AnonScoreTarget, out anonScoreTarget);
-    IWallet wallet = (IWallet)walletConstructor.Invoke(["wallet-" + i, (int)anonScoreTarget, liquidityClue, cjSkipFactors]);
-    
-    List<long> funds = walletConfig.Funds;
-    DumbCoin[] coins = new DumbCoin[funds.Count];
-    for (int j = 0; j < funds.Count; j++)
-    {
-        DumbTransaction coinTx = new();
-        coins[j] = coinTx.AddOutputCoin(Money.Satoshis(funds[j]),
-            allowedScriptTypes.RandomElement(secureRandom), 1.0, wallet.WalletId);
-        coinHistoryGenerator.GenerateFakeHistory(coins[j], newCoinHistoryDepth);
-    }
+	WalletConfig walletConfig = scenario.Wallets[i];
+	float anonScoreTarget = scenario.DefaultAnonScoreTarget;
+	if (walletConfig.AnonScoreTarget is not null) float.TryParse(walletConfig.AnonScoreTarget, out anonScoreTarget);
+	IWallet wallet = (IWallet)walletConstructor.Invoke(["wallet-" + i, (int)anonScoreTarget, liquidityClue, cjSkipFactors]);
+	
+	List<long> funds = walletConfig.Funds;
+	DumbCoin[] coins = new DumbCoin[funds.Count];
+	for (int j = 0; j < funds.Count; j++)
+	{
+		DumbTransaction coinTx = new();
+		coins[j] = coinTx.AddOutputCoin(Money.Satoshis(funds[j]),
+			allowedScriptTypes.RandomElement(secureRandom), 1.0, wallet.WalletId);
+		coinHistoryGenerator.GenerateFakeHistory(coins[j], newCoinHistoryDepth);
+	}
 
-    wallet.AddCoins(coins);
-    wallets.Add(wallet);
+	wallet.AddCoins(coins);
+	wallets.Add(wallet);
 }
 
 // NOTE: Always creating the JSON file
 StreamWriter jsonFile = new("../coinjoins.json", false); 
 JsonSerializerOptions serializerOptions = new()
 {
-    WriteIndented = true,
+	WriteIndented = true,
 };
 serializerOptions.Converters.Add(new DumbTransactionConverter(wallets));
 serializerOptions.Converters.Add(new CoinjoinEnumerableConverter());
@@ -87,14 +87,14 @@ serializerOptions.Converters.Add(new CoinjoinEnumerableConverter());
 long nRounds = scenario.Rounds == 0 ? long.MaxValue : scenario.Rounds; // NOTE: long.MaxValue is basically infinity
 for (long i = 0; i < nRounds; i++) 
 {
-    Console.WriteLine(i);
+	Console.WriteLine(i);
 
-    CoinjoinResult result = mixer.CompleteMix(wallets);
+	CoinjoinResult result = mixer.CompleteMix(wallets);
 
-    List<CoinjoinResult> results = new List<CoinjoinResult>{result};
-    
-    string coinjoinJson = JsonSerializer.Serialize(results, serializerOptions);
-    jsonFile.WriteLine(coinjoinJson);
+	List<CoinjoinResult> results = new List<CoinjoinResult>{result};
+	
+	string coinjoinJson = JsonSerializer.Serialize(results, serializerOptions);
+	jsonFile.WriteLine(coinjoinJson);
 }
 
 jsonFile.Close();
