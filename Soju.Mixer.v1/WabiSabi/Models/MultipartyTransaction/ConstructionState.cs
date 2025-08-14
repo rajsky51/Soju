@@ -2,7 +2,6 @@ using NBitcoin;
 using System.Linq;
 using Soju.Crypto;
 using Soju.Extensions;
-using Soju.MyNBitcoin;
 using Soju.WabiSabi.Backend.Models;
 using Soju.WabiSabi.Backend.Rounds;
 
@@ -16,13 +15,21 @@ public record ConstructionState : MultipartyTransactionState
 	{
 	}
 
-	public ConstructionState AddInput(MyCoin coin)
+	public ConstructionState AddInput(Coin coin, OwnershipProof ownershipProof, CoinJoinInputCommitmentData coinJoinInputCommitmentData)
 	{
 		var prevout = coin.TxOut;
-		
-		// NOTE: Contrary to the original, here we only check for a correct type; we trust the client to send valid 
-		// script
-		if (!Parameters.AllowedInputTypes.Contains(prevout.ScriptPubKeyType))
+
+		if (!OwnershipProof.VerifyCoinJoinInputProof(ownershipProof, coin.TxOut.ScriptPubKey, coinJoinInputCommitmentData))
+		{
+			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.WrongOwnershipProof);
+		}
+
+		if (!StandardScripts.IsStandardScriptPubKey(prevout.ScriptPubKey))
+		{
+			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.NonStandardInput);
+		}
+
+		if (!Parameters.AllowedInputTypes.Any(x => prevout.ScriptPubKey.IsScriptType(x)))
 		{
 			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.ScriptNotAllowed);
 		}
@@ -37,7 +44,7 @@ public record ConstructionState : MultipartyTransactionState
 			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.TooMuchFunds);
 		}
 
-		if (prevout.Value <= Parameters.MiningFeeRate.GetFee(prevout.ScriptPubKeyType.EstimateInputVsize()))
+		if (prevout.Value <= Parameters.MiningFeeRate.GetFee(prevout.ScriptPubKey.EstimateInputVsize()))
 		{
 			// Inputs must contribute more than they cost to spend because:
 			// - Such inputs contribute nothing to privacy and may degrade it
@@ -55,7 +62,7 @@ public record ConstructionState : MultipartyTransactionState
 			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.NonUniqueInputs);
 		}
 
-		return this with { Events = Events.Add(new InputAdded(coin)) };
+		return this with { Events = Events.Add(new InputAdded(coin, ownershipProof)) };
 	}
 
 	public ConstructionState AddOutput(TxOut output)

@@ -6,21 +6,7 @@ using Soju.Helpers;
 using Soju.WabiSabi.Models;
 using Soju.Crypto;
 
-// using System.Collections.Generic;
-// using System.Diagnostics.CodeAnalysis;
-// using System.Linq;
-// using System.Text;
-// using System.Threading;
-// using System.Threading.Tasks;
-// using WalletWasabi.Blockchain.Keys;
-// using WalletWasabi.Blockchain.TransactionOutputs;
-// using WalletWasabi.Blockchain.Transactions;
-// using WalletWasabi.Helpers;
-// using WalletWasabi.Logging;
-// using WalletWasabi.Models;
-// using WalletWasabi.WabiSabi.Models;
-
-namespace Soju;
+namespace Soju.Extensions;
 
 public static class NBitcoinExtensions
 {
@@ -335,8 +321,8 @@ public static class NBitcoinExtensions
 // 		return sanityFee;
 // 	}
 
-//	public static int EstimateOutputVsize(this Script scriptPubKey) =>
-//	 	new TxOut(Money.Zero, scriptPubKey).GetSerializedSize();
+	public static int EstimateOutputVsize(this Script scriptPubKey) =>
+		new TxOut(Money.Zero, scriptPubKey).GetSerializedSize();
 
 	public static int EstimateInputVsize(this Script scriptPubKey) =>
 		scriptPubKey.GetScriptType().EstimateInputVsize();
@@ -366,8 +352,8 @@ public static class NBitcoinExtensions
 // 	public static Money EffectiveCost(this TxOut output, FeeRate feeRate) =>
 // 		output.Value + feeRate.GetFee(output.ScriptPubKey.EstimateOutputVsize());
 
-	// public static Money EffectiveValue(this ICoin coin, FeeRate feeRate)
-	// 	=> EffectiveValue(coin.TxOut.Value, virtualSize: coin.TxOut.ScriptPubKey.EstimateInputVsize(), feeRate);
+	public static Money EffectiveValue(this ICoin coin, FeeRate feeRate)
+		=> EffectiveValue(coin.TxOut.Value, virtualSize: coin.TxOut.ScriptPubKey.EstimateInputVsize(), feeRate);
 
 	public static Money EffectiveValue(this ISmartCoin coin, FeeRate feeRate)
 		=> EffectiveValue(coin.Amount, virtualSize: coin.ScriptType.EstimateInputVsize(), feeRate);

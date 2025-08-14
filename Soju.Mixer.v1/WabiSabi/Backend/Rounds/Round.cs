@@ -6,7 +6,6 @@ using Soju.Crypto;
 using Soju.WabiSabi.Backend.Models;
 using Soju.WabiSabi.Crypto;
 using Soju.WabiSabi.Models.MultipartyTransaction;
-using Soju.MyNBitcoin;
 
 namespace Soju.WabiSabi.Backend.Rounds;
 
@@ -128,10 +127,10 @@ public class Round
 		return false; //InputRegistrationTimeFrame.HasExpired
 	}
 
-	public ConstructionState AddInput(MyCoin coin, OwnershipProof ownershipProof, CoinJoinInputCommitmentData coinJoinInputCommitmentData)
+	public ConstructionState AddInput(Coin coin, OwnershipProof ownershipProof, CoinJoinInputCommitmentData coinJoinInputCommitmentData)
 		=> Assert<ConstructionState>().AddInput(coin, ownershipProof, coinJoinInputCommitmentData);
 
-	public ConstructionState AddOutput(MyTxOut output)
+	public ConstructionState AddOutput(TxOut output)
 		=> Assert<ConstructionState>().AddOutput(output);
 
 	public SigningState AddWitness(int index, WitScript witness)

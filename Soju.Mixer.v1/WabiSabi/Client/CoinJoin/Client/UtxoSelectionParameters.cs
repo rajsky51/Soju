@@ -4,6 +4,7 @@ using Soju.WabiSabi.Backend.Rounds;
 using Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
 using Soju.WabiSabi.Models;
 using WabiSabi.Crypto.Randomness;
+using Soju.Extensions;
 
 namespace Soju.WabiSabi.Client;
 
