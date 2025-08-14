@@ -11,11 +11,11 @@ public static class RoundHasher
 {
 	public static uint256 CalculateHash(
 			DateTimeOffset inputRegistrationStart,
-			TimeSpan inputRegistrationTimeout,
 			MoneyRange allowedInputAmounts,
 			ImmutableSortedSet<ScriptType> allowedInputTypes,
 			MoneyRange allowedOutputAmounts,
 			ImmutableSortedSet<ScriptType> allowedOutputTypes,
+			Network network,
 			long feePerK,
 			int maxTransactionSize,
 			long minRelayTxFeePerK,
@@ -29,11 +29,11 @@ public static class RoundHasher
 	{
 		var hash = StrobeHasher.Create(ProtocolConstants.RoundStrobeDomain)
 			.Append(ProtocolConstants.RoundInputRegistrationStartStrobeLabel, inputRegistrationStart)
-			.Append(ProtocolConstants.RoundInputRegistrationTimeoutStrobeLabel, inputRegistrationTimeout)
 			.Append(ProtocolConstants.RoundAllowedInputAmountsStrobeLabel, allowedInputAmounts)
 			.Append(ProtocolConstants.RoundAllowedInputTypesStrobeLabel, allowedInputTypes)
 			.Append(ProtocolConstants.RoundAllowedOutputAmountsStrobeLabel, allowedOutputAmounts)
 			.Append(ProtocolConstants.RoundAllowedOutputTypesStrobeLabel, allowedOutputTypes)
+			.Append(ProtocolConstants.RoundNetworkStrobeLabel, network.ToString())
 			.Append(ProtocolConstants.RoundFeeRateStrobeLabel, feePerK)
 			.AppendDummyCoordinationFee(ProtocolConstants.RoundCoordinationFeeRateStrobeLabel)
 			.Append(ProtocolConstants.RoundMaxTransactionSizeStrobeLabel, maxTransactionSize)

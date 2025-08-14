@@ -1,5 +1,5 @@
 using NBitcoin;
-using System.Collections.Generic;
+using System.Diagnostics;
 using WabiSabi.Crypto;
 using WabiSabi.Crypto.Randomness;
 using Soju.Crypto;
@@ -41,6 +41,8 @@ public class Round
 		VsizeCredentialIssuer = new(new(random), random, Parameters.MaxVsizeCredentialValue);
 		AmountCredentialIssuerParameters = AmountCredentialIssuer.CredentialIssuerSecretKey.ComputeCredentialIssuerParameters();
 		VsizeCredentialIssuerParameters = VsizeCredentialIssuer.CredentialIssuerSecretKey.ComputeCredentialIssuerParameters();
+		
+		InputRegistrationStartTime = DateTime.UtcNow;
 
 		_id = new Lazy<uint256>(CalculateHash);
 	}
@@ -57,7 +59,7 @@ public class Round
 	public List<Bob> Bobs { get; } = new();
 
 	public Phase Phase { get; private set; } = Phase.InputRegistration;
-	public TimeFrame InputRegistrationTimeFrame { get; internal set; }
+	public DateTime InputRegistrationStartTime;
 	public DateTimeOffset End { get; private set; }
 	public EndRoundState EndRoundState { get; set; }
 	public int RemainingInputVsizeAllocation => Parameters.InitialInputVsizeAllocation - (InputCount * Parameters.MaxVsizeAllocationPerAlice);
@@ -86,19 +88,7 @@ public class Round
 		this.LogInfo($"Phase changed: {Phase} -> {phase}");
 		Phase = phase;
 
-		if (phase == Phase.ConnectionConfirmation)
-		{
-			ConnectionConfirmationTimeFrame = ConnectionConfirmationTimeFrame.StartNow();
-		}
-		else if (phase == Phase.OutputRegistration)
-		{
-			OutputRegistrationTimeFrame = OutputRegistrationTimeFrame.StartNow();
-		}
-		else if (phase == Phase.TransactionSigning)
-		{
-			TransactionSigningTimeFrame = TransactionSigningTimeFrame.StartNow();
-		}
-		else if (phase == Phase.Ended)
+		if (phase == Phase.Ended)
 		{
 			End = DateTimeOffset.UtcNow;
 		}
@@ -123,8 +113,9 @@ public class Round
 			return true;
 		}
 		
-		// NOTE: We don't do anything with time, so we assume that if we are in InputRegistration phase, it hasn't ended
-		return false; //InputRegistrationTimeFrame.HasExpired
+		Debug.Assert(false, $"Round.IsInputRegistrationEnded: We were to return false which should never happen. We" +
+		                    $"should always know if the input registration ended.");
+		return false;
 	}
 
 	public ConstructionState AddInput(Coin coin, OwnershipProof ownershipProof, CoinJoinInputCommitmentData coinJoinInputCommitmentData)
@@ -138,11 +129,7 @@ public class Round
 
 	private uint256 CalculateHash()
 		=> RoundHasher.CalculateHash(
-				InputRegistrationTimeFrame.StartTime,
-				InputRegistrationTimeFrame.Duration,
-				ConnectionConfirmationTimeFrame.Duration,
-				OutputRegistrationTimeFrame.Duration,
-				TransactionSigningTimeFrame.Duration,
+				InputRegistrationStartTime,
 				Parameters.AllowedInputAmounts,
 				Parameters.AllowedInputTypes,
 				Parameters.AllowedOutputAmounts,

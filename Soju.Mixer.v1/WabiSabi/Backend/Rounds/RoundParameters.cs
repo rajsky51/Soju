@@ -9,6 +9,7 @@ namespace Soju.WabiSabi.Backend.Rounds;
 public record RoundParameters
 {
 	public RoundParameters(
+		Network network,
 		FeeRate miningFeeRate,
 		Money maxSuggestedAmount,
 		int minInputCountByRound,
@@ -19,6 +20,7 @@ public record RoundParameters
 		ImmutableSortedSet<ScriptType> allowedOutputTypes,
 		string coordinationIdentifier)
 	{
+		Network = network;
 		MiningFeeRate = miningFeeRate;
 		MaxSuggestedAmount = maxSuggestedAmount;
 		MinInputCountByRound = minInputCountByRound;
@@ -34,6 +36,7 @@ public record RoundParameters
 		CoordinationIdentifier = coordinationIdentifier;
 	}
 
+	public Network Network { get; init; }
 	public FeeRate MiningFeeRate { get; init; }
 	public CoordinationFeeRate CoordinationFeeRate => CoordinationFeeRate.Zero; // for serialization compatibility
 	public Money MaxSuggestedAmount { get; init; }
@@ -65,10 +68,12 @@ public record RoundParameters
 
 	public static RoundParameters Create(
 		WabiSabiConfig wabiSabiConfig,
+		Network network,
 		FeeRate miningFeeRate,
 		Money maxSuggestedAmount)
 	{
 		return new RoundParameters(
+			network,
 			miningFeeRate,
 			maxSuggestedAmount,
 			wabiSabiConfig.MinInputCountByRound,
@@ -79,4 +84,8 @@ public record RoundParameters
 			wabiSabiConfig.AllowedOutputTypes,
 			wabiSabiConfig.CoordinatorIdentifier);
 	}
+	
+	// TODO: Ideally this should be done through some central system so we can track transactions
+	public Transaction CreateTransaction()
+		=> Transaction.Create(Network);
 }

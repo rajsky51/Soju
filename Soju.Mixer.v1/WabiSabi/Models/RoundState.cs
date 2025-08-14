@@ -9,21 +9,21 @@ using CredentialIssuerParameters = WabiSabi.Crypto.CredentialIssuerParameters;
 namespace Soju.WabiSabi.Models;
 
 public record RoundState(uint256 Id,
+	uint256 BlameOf,
 	CredentialIssuerParameters AmountCredentialIssuerParameters,
 	CredentialIssuerParameters VsizeCredentialIssuerParameters,
 	Phase Phase,
 	EndRoundState EndRoundState,
 	DateTimeOffset InputRegistrationStart,
-	TimeSpan InputRegistrationTimeout,
 	MultipartyTransactionState CoinjoinState)
 {
 	private readonly Lazy<uint256> _calculatedRoundId = new(() => RoundHasher.CalculateHash(
 		InputRegistrationStart,
-		InputRegistrationTimeout,
 		CoinjoinState.Parameters.AllowedInputAmounts,
 		CoinjoinState.Parameters.AllowedInputTypes,
 		CoinjoinState.Parameters.AllowedOutputAmounts,
 		CoinjoinState.Parameters.AllowedOutputTypes,
+		CoinjoinState.Parameters.Network,
 		CoinjoinState.Parameters.MiningFeeRate.FeePerK,
 		CoinjoinState.Parameters.MaxTransactionSize,
 		CoinjoinState.Parameters.MinRelayTxFee.FeePerK,
@@ -36,29 +36,29 @@ public record RoundState(uint256 Id,
 		VsizeCredentialIssuerParameters));
 
 	public bool IsRoundIdMatching() => Id == _calculatedRoundId.Value;
-	public bool IsBlame => false;
+	public bool IsBlame => BlameOf != uint256.Zero;
 
 	public static RoundState FromRound(Round round, int stateId = 0) =>
 		new(
 			round.Id,
+			BlameOf: uint256.Zero,
 			round.AmountCredentialIssuerParameters,
 			round.VsizeCredentialIssuerParameters,
 			round.Phase,
 			round.EndRoundState,
-			round.InputRegistrationTimeFrame.StartTime,
-			round.InputRegistrationTimeFrame.Duration,
+			round.InputRegistrationStartTime,
 			round.CoinjoinState.GetStateFrom(stateId)
 			);
 
 	public RoundState GetSubState(int skipFromBaseState) =>
 		new(
 			Id,
+			BlameOf,
 			AmountCredentialIssuerParameters,
 			VsizeCredentialIssuerParameters,
 			Phase,
 			EndRoundState,
 			InputRegistrationStart,
-			InputRegistrationTimeout,
 			CoinjoinState.GetStateFrom(skipFromBaseState)
 			);
 
