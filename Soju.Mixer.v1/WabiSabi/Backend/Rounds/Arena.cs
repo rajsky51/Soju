@@ -11,7 +11,6 @@ using System.Collections.Immutable;
 using Soju.WabiSabi.Models;
 using Soju.Extensions;
 using Soju.Logging;
-using Soju.WabiSabi.Backend.DoSPrevention;
 
 namespace Soju.WabiSabi.Backend.Rounds;
 
@@ -89,30 +88,22 @@ public partial class Arena
 		RoundStates = rounds.Select(r => RoundState.FromRound(r, stateId: 0)).ToImmutableList();
 	}
 
-	private async Task StepInputRegistrationPhaseAsync(CancellationToken cancel)
+	private void StepInputRegistrationPhase()
 	{
-		foreach (var round in Rounds.Where(x =>
-			x.Phase == Phase.InputRegistration
-			&& x.IsInputRegistrationEnded(x.Parameters.MaxInputCountByRound))
-			.ToArray())
+		Round[] inputRegRounds = Rounds.Where(x => x.Phase == Phase.InputRegistration).ToArray();
+		Debug.Assert(inputRegRounds.Length == 1);
+		foreach (var round in inputRegRounds)
 		{
 			try
 			{
-				await foreach (var offendingAlices in CheckTxoSpendStatusAsync(round, cancel).ConfigureAwait(false))
+				List<Alice> offendingAlices = CheckTxoSpendStatus(round);
+				if (offendingAlices.Count != 0)
 				{
-					if (offendingAlices.Length != 0)
-					{
-						round.Alices.RemoveAll(x => offendingAlices.Contains(x));
-					}
+					round.Alices.RemoveAll(x => offendingAlices.Contains(x));
 				}
 
 				if (round.InputCount < round.Parameters.MinInputCountByRound)
 				{
-					if (!round.InputRegistrationTimeFrame.HasExpired)
-					{
-						continue;
-					}
-
 					MaxSuggestedAmountProvider.StepMaxSuggested(round, false);
 					EndRound(round, EndRoundState.AbortedNotEnoughAlices);
 					round.LogInfo($"Not enough inputs ({round.InputCount}) in {nameof(Phase.InputRegistration)} phase. The minimum is ({round.Parameters.MinInputCountByRound}). {nameof(round.Parameters.MaxSuggestedAmount)} was '{round.Parameters.MaxSuggestedAmount}' BTC.");
@@ -131,9 +122,11 @@ public partial class Arena
 		}
 	}
 
-	private async Task StepConnectionConfirmationPhaseAsync(CancellationToken cancel)
+	private void StepConnectionConfirmationPhase()
 	{
-		foreach (var round in Rounds.Where(x => x.Phase == Phase.ConnectionConfirmation).ToArray())
+		Round[] ccRounds = Rounds.Where(x => x.Phase == Phase.ConnectionConfirmation).ToArray();
+		Debug.Assert(ccRounds.Length == 1);
+		foreach (var round in ccRounds)
 		{
 			try
 			{
@@ -141,8 +134,9 @@ public partial class Arena
 				{
 					SetRoundPhase(round, Phase.OutputRegistration);
 				}
-				else if (round.ConnectionConfirmationTimeFrame.HasExpired)
+				else
 				{
+					Debug.Assert(false, "We don't handle unconfirmed alices");
 					var alicesDidNotConfirm = round.Alices.Where(x => !x.ConfirmedConnection).ToArray();
 					if (ReasonableOffendersCount(alicesDidNotConfirm.Length, round.Parameters.MinInputCountByRound))
 					{
@@ -165,11 +159,7 @@ public partial class Arena
 					// Once an input is confirmed and non-zero credentials are issued, it is too late to do any
 					if (round.InputCount >= round.Parameters.MinInputCountByRound)
 					{
-						var allOffendingAlices = new List<Alice>();
-						await foreach (var offendingAlices in CheckTxoSpendStatusAsync(round, cancel).ConfigureAwait(false))
-						{
-							allOffendingAlices.AddRange(offendingAlices);
-						}
+						List<Alice> allOffendingAlices = CheckTxoSpendStatus(round);
 
 						if (ReasonableOffendersCount(allOffendingAlices.Count, round.Parameters.MinInputCountByRound))
 						{
@@ -190,7 +180,6 @@ public partial class Arena
 						{
 							round.LogInfo($"There were {allOffendingAlices.Count} alices that spent the registered UTXO. Aborting...");
 
-							await EndRoundAndTryCreateBlameRoundAsync(round, cancel).ConfigureAwait(false);
 							return;
 						}
 					}
@@ -202,7 +191,6 @@ public partial class Arena
 					}
 					else
 					{
-						round.OutputRegistrationTimeFrame = TimeFrame.Create(_config.FailFastOutputRegistrationTimeout);
 						SetRoundPhase(round, Phase.OutputRegistration);
 					}
 				}
@@ -217,14 +205,16 @@ public partial class Arena
 
 	private void StepOutputRegistrationPhase()
 	{
-		foreach (var round in Rounds.Where(x => x.Phase == Phase.OutputRegistration).ToArray())
+		Round[] outputRegRounds = Rounds.Where(x => x.Phase == Phase.OutputRegistration).ToArray();
+		Debug.Assert(outputRegRounds.Length == 1);
+		foreach (var round in outputRegRounds)
 		{
 			try
 			{
 				var allReady = round.Alices.All(a => a.ReadyToSign);
-				bool phaseExpired = round.OutputRegistrationTimeFrame.HasExpired;
+				Debug.Assert(allReady);
 
-				if (allReady || phaseExpired)
+				if (allReady)
 				{
 					var coinjoin = round.Assert<ConstructionState>();
 
@@ -236,15 +226,14 @@ public partial class Arena
 
 					round.CoinjoinState = FinalizeTransaction(round.Id, coinjoin);
 
-					if (!allReady && phaseExpired)
-					{
-						// It would be better to end the round and create a blame round here, but older client would not support it.
-						// See https://github.com/zkSNACKs/WalletWasabi/pull/11028.
-						round.TransactionSigningTimeFrame = TimeFrame.Create(_config.FailFastTransactionSigningTimeout);
-						round.FastSigningPhase = true;
-					}
-
 					SetRoundPhase(round, Phase.TransactionSigning);
+				} 
+				else 
+				{
+					// TODO: Due to the assert above this never happens, but let's have it here
+					// NOTE: Contrary to the original code we are ending the round here. In the original they would go 
+					// to FastSigningPhase
+					EndRound(round, EndRoundState.AbortedWithError);
 				}
 			}
 			catch (Exception ex)
@@ -255,14 +244,17 @@ public partial class Arena
 		}
 	}
 
-	private async Task StepTransactionSigningPhaseAsync(CancellationToken cancellationToken)
+	private void StepTransactionSigningPhaseAsync()
 	{
-		foreach (var round in Rounds.Where(x => x.Phase == Phase.TransactionSigning).ToArray())
+		Round[] txSigningRounds = Rounds.Where(x => x.Phase == Phase.TransactionSigning).ToArray();
+		foreach (var round in txSigningRounds)
 		{
 			var state = round.Assert<SigningState>();
 
 			try
 			{
+				// TODO: Actually when simulating a cheating coordinator, the clients may not want to sign the transaction
+				Debug.Assert(state.IsFullySigned);
 				if (state.IsFullySigned)
 				{
 					Transaction coinjoin = state.CreateTransaction();
@@ -280,7 +272,7 @@ public partial class Arena
 					// Added for monitoring reasons.
 					try
 					{
-						FeeRate targetFeeRate = (await Rpc.EstimateConservativeSmartFeeAsync((int)_config.ConfirmationTarget, cancellationToken).ConfigureAwait(false)).FeeRate;
+						FeeRate targetFeeRate = Rpc.EstimateConservativeSmartFee((int)_config.ConfirmationTarget).FeeRate;
 						round.LogInfo($"Current Fee Rate on the Network: {targetFeeRate.SatoshiPerByte} sat/vByte. Confirmation target is: {(int)_config.ConfirmationTarget} blocks.");
 					}
 					catch (Exception ex)
@@ -302,7 +294,7 @@ public partial class Arena
 						$"There are {indistinguishableOutputs.Count(x => x.count == 1)} occurrences of unique outputs.");
 
 					// Broadcasting.
-					await Rpc.SendRawTransactionAsync(coinjoin, cancellationToken).ConfigureAwait(false);
+					Rpc.SendRawTransaction(coinjoin);
 					EndRound(round, EndRoundState.TransactionBroadcasted);
 					round.LogInfo($"Successfully broadcast the coinjoin: {coinjoin.GetHash()}.");
 
@@ -330,16 +322,16 @@ public partial class Arena
 					CoinJoinScriptStore?.AddRange(coinjoin.Outputs.Select(x => x.ScriptPubKey));
 					CoinJoinBroadcast?.Invoke(this, coinjoin);
 				}
-				else if (round.TransactionSigningTimeFrame.HasExpired)
+				else 
 				{
-					round.LogWarning($"Signing phase failed with timed out after {round.TransactionSigningTimeFrame.Duration.TotalSeconds} seconds.");
+					round.LogWarning($"Signing phase failed.");
 					if (round.FastSigningPhase)
 					{
-						await FailFastTransactionSigningPhaseAsync(round, cancellationToken).ConfigureAwait(false);
+						FailFastTransactionSigningPhaseAsync(round);
 					}
 					else
 					{
-						await FailTransactionSigningPhaseAsync(round, cancellationToken).ConfigureAwait(false);
+						FailTransactionSigningPhaseAsync(round);
 					}
 				}
 			}
@@ -356,22 +348,18 @@ public partial class Arena
 		}
 	}
 
-	private async IAsyncEnumerable<Alice[]> CheckTxoSpendStatusAsync(Round round, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+	private List<Alice> CheckTxoSpendStatus(Round round)
 	{
-		foreach (var chunkOfAlices in round.Alices.ToList().ChunkBy(16))
+		List<Alice> alices = [];
+		foreach (Alice alice in round.Alices)
 		{
-			var batchedRpc = Rpc.PrepareBatch();
-
-			var aliceCheckingTaskPairs = chunkOfAlices
-				.Select(x => (Alice: x, StatusTask: Rpc.GetTxOutAsync(x.Coin.Outpoint.Hash, (int)x.Coin.Outpoint.N, includeMempool: true, cancellationToken)))
-				.ToList();
-
-			await batchedRpc.SendBatchAsync(cancellationToken).ConfigureAwait(false);
-
-			var spendStatusCheckingTasks = aliceCheckingTaskPairs.Select(async x => (x.Alice, Status: await x.StatusTask.ConfigureAwait(false)));
-			var alices = await Task.WhenAll(spendStatusCheckingTasks).ConfigureAwait(false);
-			yield return alices.Where(x => x.Status is null).Select(x => x.Alice).ToArray();
+			OutPoint aliceOutpoint = alice.Coin.Outpoint;
+			if (Rpc.GetTxOut(aliceOutpoint.Hash, (int)aliceOutpoint.N) is null)
+			{
+				alices.Add(alice);
+			}
 		}
+		return alices;
 	}
 
 	private async Task FailTransactionSigningPhaseAsync(Round round, CancellationToken cancellationToken)
@@ -435,40 +423,13 @@ public partial class Arena
 		await EndRoundAndTryCreateBlameRoundAsync(round, cancellationToken).ConfigureAwait(false);
 	}
 
-	private async Task EndRoundAndTryCreateBlameRoundAsync(Round round, CancellationToken cancellationToken)
-	{
-		if (round.InputCount < _config.MinInputCountByBlameRound)
-		{
-			// There are not enough inputs, makes no sense to create the blame round.
-			EndRound(round, EndRoundState.AbortedNotEnoughAlicesSigned);
-			return;
-		}
-
-		// This indicates to the client that there will be a blame round.
-		EndRound(round, EndRoundState.NotAllAlicesSign);
-
-		var feeRate = (await Rpc.EstimateConservativeSmartFeeAsync((int)_config.ConfirmationTarget, cancellationToken).ConfigureAwait(false)).FeeRate;
-		var blameWhitelist = round.Alices
-			.Select(x => x.Coin.Outpoint)
-			.Where(x => !_prison.IsBanned(x, _config.GetDoSConfiguration(), DateTimeOffset.UtcNow))
-			.ToHashSet();
-
-		RoundParameters parameters = _roundParameterFactory.CreateBlameRoundParameter(feeRate, round) with
-		{
-			MinInputCountByRound = _config.MinInputCountByBlameRound
-		};
-
-		BlameRound blameRound = new(parameters, round, blameWhitelist, SecureRandom.Instance);
-		AddRound(blameRound);
-		blameRound.LogInfo($"Blame round created from round '{round.Id}'.");
-	}
-
 	private async Task CreateRoundsAsync(CancellationToken cancellationToken)
 	{
 		FeeRate? feeRate = null;
 
 		// Have rounds to split the volume around minimum input counts if load balance is required.
 		// Only do things if the load balancer compatibility is configured.
+		// TODO: As we are only ever doing one round at the same time, this shouldn't be needed
 		if (_config.WW200CompatibleLoadBalancing)
 		{
 			foreach (var round in Rounds.Where(x =>
@@ -477,7 +438,7 @@ public partial class Arena
 				&& !x.IsInputRegistrationEnded(x.Parameters.MaxInputCountByRound)
 				&& x.InputCount >= _config.RoundDestroyerThreshold).ToArray())
 			{
-				feeRate = (await Rpc.EstimateConservativeSmartFeeAsync((int)_config.ConfirmationTarget, cancellationToken).ConfigureAwait(false)).FeeRate;
+				feeRate = Rpc.EstimateConservativeSmartFee((int)_config.ConfirmationTarget).FeeRate;
 
 				var allInputs = round.Alices.Select(y => y.Coin.Amount).OrderBy(x => x).ToArray();
 
@@ -526,7 +487,7 @@ public partial class Arena
 		int roundsToCreate = _config.RoundParallelization - registrableRoundCount;
 		for (int i = 0; i < roundsToCreate; i++)
 		{
-			feeRate ??= (await Rpc.EstimateConservativeSmartFeeAsync((int)_config.ConfirmationTarget, cancellationToken).ConfigureAwait(false)).FeeRate;
+			feeRate ??= Rpc.EstimateConservativeSmartFee((int)_config.ConfirmationTarget).FeeRate;
 			RoundParameters parameters = _roundParameterFactory.CreateRoundParameter(feeRate, MaxSuggestedAmountProvider.MaxSuggestedAmount);
 
 			var r = new Round(parameters, SecureRandom.Instance);
@@ -574,10 +535,9 @@ public partial class Arena
 
 	private void TimeoutRounds()
 	{
-		foreach (var expiredRound in Rounds.Where(
-			x =>
-			x.Phase == Phase.Ended
-			&& x.End + _config.RoundExpiryTimeout < DateTimeOffset.UtcNow).ToArray())
+		Round[] expiredRounds = Rounds.Where(x =>x.Phase == Phase.Ended).ToArray();
+		Debug.Assert(expiredRounds.Length == 1);
+		foreach (var expiredRound in expiredRounds)
 		{
 			Rounds.Remove(expiredRound);
 		}

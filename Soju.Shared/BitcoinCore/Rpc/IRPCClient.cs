@@ -7,5 +7,7 @@ public interface IRPCClient
 {
 	Network Network { get; }
 	
+	uint256 SendRawTransaction(Transaction transaction);
+	
 	GetTxOutResponse? GetTxOut(uint256 txid, int index);
 }

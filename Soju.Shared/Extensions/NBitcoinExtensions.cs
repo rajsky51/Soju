@@ -61,13 +61,13 @@ public static class NBitcoinExtensions
 // 		me.Inputs.Any(i => Script.IsNullOrEmpty(i.ScriptSig)) ||
 // 		me.Outputs.Any(o => o.ScriptPubKey.IsScriptType(ScriptType.Witness));
 
-// 	public static IEnumerable<(Money value, int count)> GetIndistinguishableOutputs(this Transaction me, bool includeSingle)
-// 	{
-// 		return me.Outputs.GroupBy(x => x.Value)
-// 			.ToDictionary(x => x.Key, y => y.Count())
-// 			.Select(x => (x.Key, x.Value))
-// 			.Where(x => includeSingle || x.Value > 1);
-// 	}
+	public static IEnumerable<(Money value, int count)> GetIndistinguishableOutputs(this Transaction me, bool includeSingle)
+	{
+		return me.Outputs.GroupBy(x => x.Value)
+			.ToDictionary(x => x.Key, y => y.Count())
+			.Select(x => (x.Key, x.Value))
+			.Where(x => includeSingle || x.Value > 1);
+	}
 
 // 	/// <summary>
 // 	/// Careful, if it's in a legacy block then this won't work.

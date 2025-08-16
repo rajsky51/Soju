@@ -113,8 +113,9 @@ public class Round
 			return true;
 		}
 		
-		Debug.Assert(false, $"Round.IsInputRegistrationEnded: We were to return false which should never happen. We" +
-							$"should always know if the input registration ended.");
+		Debug.Assert(false, $"Round.IsInputRegistrationEnded: We were to return false " +
+		                    $"which should never happen. We should always know if the input " +
+		                    $"registration ended.");
 		return false;
 	}
 

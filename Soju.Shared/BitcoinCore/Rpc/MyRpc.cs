@@ -19,6 +19,15 @@ public class MyRpc : IRPCClient
 		Transactions = new();
 	}
 	
+	public uint256 SendRawTransaction(Transaction transaction)
+	{
+		uint256 txHash = transaction.GetHash();
+		Debug.Assert(!Transactions.ContainsKey(txHash));
+		Transactions.Add(txHash, transaction);
+		// NOTE: Output is never used, but let's return the hash. As in BitcoinFactory.GetMockMinimalRpc
+		return txHash;
+	}
+	
 	public GetTxOutResponse? GetTxOut(uint256 txid, int index)
 	{
 		if (Transactions.TryGetValue(txid, out Transaction tx)) 

@@ -9,6 +9,7 @@ using Soju.JsonConverters.Bitcoin;
 namespace Soju.WabiSabi.Backend;
 
 [JsonObject(MemberSerialization.OptIn)]
+// TODO: Later check this, but we shouldn't need to inherit from ConfigBase
 public class WabiSabiConfig : ConfigBase
 {
 	public WabiSabiConfig() : base()
@@ -19,10 +20,10 @@ public class WabiSabiConfig : ConfigBase
 	{
 	}
 
-	// [DefaultValue(108)]
-	// [JsonProperty(PropertyName = "ConfirmationTarget", DefaultValueHandling = DefaultValueHandling.Populate)]
-	// public uint ConfirmationTarget { get; set; } = 108;
-	//
+	[DefaultValue(108)]
+	[JsonProperty(PropertyName = "ConfirmationTarget", DefaultValueHandling = DefaultValueHandling.Populate)]
+	public uint ConfirmationTarget { get; set; } = 108;
+	
 	// [DefaultValueMoneyBtc("0.1")]
 	// [JsonProperty(PropertyName = "DoSSeverity", DefaultValueHandling = DefaultValueHandling.Populate)]
 	// [JsonConverter(typeof(MoneyBtcJsonConverter))]
@@ -124,13 +125,13 @@ public class WabiSabiConfig : ConfigBase
 	// [DefaultValue(375)]
 	// [JsonProperty(PropertyName = "RoundDestroyerThreshold", DefaultValueHandling = DefaultValueHandling.Populate)]
 	// public int RoundDestroyerThreshold { get; set; } = 375;
-	//
-	// [JsonProperty(PropertyName = "CoordinatorExtPubKey")]
-	// public ExtPubKey CoordinatorExtPubKey { get; private set; } = NBitcoinHelpers.BetterParseExtPubKey(Constants.WabiSabiFallBackCoordinatorExtPubKey);
-	//
-	// [DefaultValue(1)]
-	// [JsonProperty(PropertyName = "CoordinatorExtPubKeyCurrentDepth", DefaultValueHandling = DefaultValueHandling.Populate)]
-	// public int CoordinatorExtPubKeyCurrentDepth { get; private set; } = 1;
+	
+	[JsonProperty(PropertyName = "CoordinatorExtPubKey")]
+	public ExtPubKey CoordinatorExtPubKey { get; private set; } = NBitcoinHelpers.BetterParseExtPubKey(Constants.WabiSabiFallBackCoordinatorExtPubKey);
+	
+	[DefaultValue(1)]
+	[JsonProperty(PropertyName = "CoordinatorExtPubKeyCurrentDepth", DefaultValueHandling = DefaultValueHandling.Populate)]
+	public int CoordinatorExtPubKeyCurrentDepth { get; private set; } = 1;
 	
 	[DefaultValueMoneyBtc("0.1")]
 	[JsonProperty(PropertyName = "MaxSuggestedAmountBase", DefaultValueHandling = DefaultValueHandling.Populate)]
@@ -193,18 +194,18 @@ public class WabiSabiConfig : ConfigBase
 	
 	public ImmutableSortedSet<ScriptType> AllowedOutputTypes => GetScriptTypes(AllowP2wpkhOutputs, AllowP2trOutputs, AllowP2pkhOutputs, AllowP2shOutputs, AllowP2wshOutputs);
 	
-	// public Script GetNextCleanCoordinatorScript() => DeriveCoordinatorScript(CoordinatorExtPubKeyCurrentDepth);
-	//
-	// public Script DeriveCoordinatorScript(int index) => CoordinatorExtPubKey.Derive(0, false).Derive(index, false).PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit);
-	//
-	// public void MakeNextCoordinatorScriptDirty()
-	// {
-	// 	CoordinatorExtPubKeyCurrentDepth++;
-	// 	if (!string.IsNullOrWhiteSpace(FilePath))
-	// 	{
-	// 		ToFile();
-	// 	}
-	// }
+	public Script GetNextCleanCoordinatorScript() => DeriveCoordinatorScript(CoordinatorExtPubKeyCurrentDepth);
+	
+	public Script DeriveCoordinatorScript(int index) => CoordinatorExtPubKey.Derive(0, false).Derive(index, false).PubKey.GetScriptPubKey(ScriptPubKeyType.Segwit);
+	
+	public void MakeNextCoordinatorScriptDirty()
+	{
+		CoordinatorExtPubKeyCurrentDepth++;
+		if (!string.IsNullOrWhiteSpace(FilePath))
+		{
+			ToFile();
+		}
+	}
 
 	private static ImmutableSortedSet<ScriptType> GetScriptTypes(bool p2wpkh, bool p2tr, bool p2pkh, bool p2sh, bool p2wsh)
 	{
