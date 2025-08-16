@@ -1,13 +1,7 @@
-using System.Collections.Concurrent;
 using NBitcoin;
 using NBitcoin.RPC;
-using Nito.AsyncEx;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
-using Soju.Bases;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using Soju.BitcoinCore.Rpc;
 using Soju.Crypto.Randomness;
 using Soju.WabiSabi.Backend.Models;
@@ -21,7 +15,7 @@ using Soju.WabiSabi.Backend.DoSPrevention;
 
 namespace Soju.WabiSabi.Backend.Rounds;
 
-public partial class Arena : PeriodicRunner
+public partial class Arena
 {
 	public Arena(
 		WabiSabiConfig config,
@@ -45,7 +39,6 @@ public partial class Arena : PeriodicRunner
 	public HashSet<Round> Rounds { get; } = new();
 	public ImmutableList<RoundState> RoundStates { get; private set; } = ImmutableList<RoundState>.Empty;
 	internal ConcurrentQueue<uint256> DisruptedRounds { get; } = new();
-	private readonly AsyncLock _asyncLock = new();
 	private readonly WabiSabiConfig _config;
 	internal IRPCClient Rpc { get; }
 	private readonly Prison _prison;
