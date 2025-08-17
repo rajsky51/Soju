@@ -5,7 +5,7 @@ namespace Soju.WabiSabi.Models;
 
 public record OutputRegistrationRequest(
 	uint256 RoundId,
-	ScriptType ScriptType,
+	Script Script,
 	RealCredentialsRequest AmountCredentialRequests,
 	RealCredentialsRequest VsizeCredentialRequests
 );

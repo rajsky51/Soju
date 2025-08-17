@@ -18,7 +18,6 @@ public class Alice
 
 	public Round Round { get; }
 	public Guid Id { get; }
-	public DateTimeOffset Deadline { get; set; } = DateTimeOffset.UtcNow;
 	public Coin Coin { get; }
 	public OwnershipProof OwnershipProof { get; }
 	public Money TotalInputAmount => Coin.Amount;
@@ -31,10 +30,4 @@ public class Alice
 
 	public Money CalculateRemainingAmountCredentials(FeeRate feeRate) =>
 		Coin.EffectiveValue(feeRate);
-
-	public void SetDeadlineRelativeTo(TimeSpan connectionConfirmationTimeout)
-	{
-		// Have alice timeouts a bit sooner than the timeout of connection confirmation phase.
-		Deadline = DateTimeOffset.UtcNow + (connectionConfirmationTimeout * 0.9);
-	}
 }

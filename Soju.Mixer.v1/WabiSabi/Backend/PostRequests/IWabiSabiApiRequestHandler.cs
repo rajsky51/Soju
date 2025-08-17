@@ -10,7 +10,7 @@ public interface IWabiSabiApiRequestHandler
 
 	ConnectionConfirmationResponse ConfirmConnection(ConnectionConfirmationRequest request);
 
-	void RegisterOutput(OutputRegistrationRequest request);
+	EmptyResponse RegisterOutput(OutputRegistrationRequest request);
 
 	void RemoveInput(InputsRemovalRequest request);
 
