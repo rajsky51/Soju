@@ -107,11 +107,6 @@ public class RoundStateUpdater
 		return CreateRoundAwaiterAsync(roundId, phase, null, cancellationToken);
 	}
 
-	public Task<RoundState> CreateRoundAwaiter(Phase phase, CancellationToken cancellationToken)
-	{
-		return CreateRoundAwaiterAsync(null, phase, null, cancellationToken);
-	}
-
 	/// <summary>
 	/// This might not contain up-to-date states. Make sure it is updated.
 	/// </summary>

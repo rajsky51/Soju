@@ -19,15 +19,12 @@ public partial class Arena
 	public Arena(
 		WabiSabiConfig config,
 		IRPCClient rpc,
-		Prison prison,
 		RoundParameterFactory roundParameterFactory,
-		CoinJoinScriptStore? coinJoinScriptStore = null,
-		TimeSpan? period = null
-		) : base(period ?? TimeSpan.FromSeconds(2))
+		CoinJoinScriptStore? coinJoinScriptStore = null
+		)
 	{
 		_config = config;
 		Rpc = rpc;
-		_prison = prison;
 		CoinJoinScriptStore = coinJoinScriptStore;
 		_roundParameterFactory = roundParameterFactory;
 		MaxSuggestedAmountProvider = new(_config);
@@ -40,43 +37,12 @@ public partial class Arena
 	internal ConcurrentQueue<uint256> DisruptedRounds { get; } = new();
 	private readonly WabiSabiConfig _config;
 	internal IRPCClient Rpc { get; }
-	private readonly Prison _prison;
+	// private readonly Prison _prison;
 	public CoinJoinScriptStore? CoinJoinScriptStore { get; }
 	private readonly RoundParameterFactory _roundParameterFactory;
 	public MaxSuggestedAmountProvider MaxSuggestedAmountProvider { get; }
 
-	protected override async Task ActionAsync(CancellationToken cancel)
-	{
-		var before = DateTimeOffset.UtcNow;
-		using (await _asyncLock.LockAsync(cancel).ConfigureAwait(false))
-		{
-			var beforeInside = DateTimeOffset.UtcNow;
-			TimeoutRounds();
-
-			TimeoutAlices();
-
-			await StepTransactionSigningPhaseAsync(cancel).ConfigureAwait(false);
-
-			StepOutputRegistrationPhase();
-
-			await StepConnectionConfirmationPhaseAsync(cancel).ConfigureAwait(false);
-
-			await StepInputRegistrationPhaseAsync(cancel).ConfigureAwait(false);
-
-			cancel.ThrowIfCancellationRequested();
-
-			// Ensure there's at least one non-blame round in input registration.
-			await CreateRoundsAsync(cancel).ConfigureAwait(false);
-
-			AbortDisruptedRounds();
-
-			// RoundStates have to contain all states. Do not change stateId=0.
-			SetRoundStates();
-
-		}
-	}
-
-	private void SetRoundStates()
+	public void SetRoundStates()
 	{
 		// Order rounds ascending by max suggested amount, then ascending by input count.
 		// This will make sure WW2.0.1 clients register according to our desired order.
@@ -88,7 +54,7 @@ public partial class Arena
 		RoundStates = rounds.Select(r => RoundState.FromRound(r, stateId: 0)).ToImmutableList();
 	}
 
-	private void StepInputRegistrationPhase()
+	public void StepInputRegistrationPhase()
 	{
 		Round[] inputRegRounds = Rounds.Where(x => x.Phase == Phase.InputRegistration).ToArray();
 		Debug.Assert(inputRegRounds.Length == 1);
@@ -122,7 +88,7 @@ public partial class Arena
 		}
 	}
 
-	private void StepConnectionConfirmationPhase()
+	public void StepConnectionConfirmationPhase()
 	{
 		Round[] ccRounds = Rounds.Where(x => x.Phase == Phase.ConnectionConfirmation).ToArray();
 		Debug.Assert(ccRounds.Length == 1);
@@ -142,7 +108,9 @@ public partial class Arena
 					{
 						foreach (var alice in alicesDidNotConfirm)
 						{
-							_prison.FailedToConfirm(alice.Coin.Outpoint, alice.Coin.Amount, round.Id);
+							// TODO:
+							Debug.Assert(false);
+							// _prison.FailedToConfirm(alice.Coin.Outpoint, alice.Coin.Amount, round.Id);
 						}
 					}
 					else
@@ -150,7 +118,9 @@ public partial class Arena
 						Logger.LogWarning($"{round.Id}: Tried to ban {alicesDidNotConfirm.Length} inputs for FailedToConfirm - ban was skipped.");
 						foreach (var alice in alicesDidNotConfirm)
 						{
-							_prison.BackendStabilitySafetyBan(alice.Coin.Outpoint, round.Id);
+							// TODO:
+							Debug.Assert(false);
+							// _prison.BackendStabilitySafetyBan(alice.Coin.Outpoint, round.Id);
 						}
 					}
 					var removedAliceCount = round.Alices.RemoveAll(x => alicesDidNotConfirm.Contains(x));
@@ -165,7 +135,9 @@ public partial class Arena
 						{
 							foreach (var offender in allOffendingAlices)
 							{
-								_prison.DoubleSpent(offender.Coin.Outpoint, offender.Coin.Amount, round.Id);
+								// TODO:
+								Debug.Assert(false);
+								// _prison.DoubleSpent(offender.Coin.Outpoint, offender.Coin.Amount, round.Id);
 							}
 						}
 						else
@@ -173,7 +145,9 @@ public partial class Arena
 							Logger.LogWarning($"{round.Id}: Tried to ban {allOffendingAlices.Count} inputs for FailedToConfirm - ban was skipped.");
 							foreach (var alice in allOffendingAlices)
 							{
-								_prison.BackendStabilitySafetyBan(alice.Coin.Outpoint, round.Id);
+								// TODO:
+								Debug.Assert(false);
+								// _prison.BackendStabilitySafetyBan(alice.Coin.Outpoint, round.Id);
 							}
 						}
 						if (allOffendingAlices.Count > 0)
@@ -203,7 +177,7 @@ public partial class Arena
 		}
 	}
 
-	private void StepOutputRegistrationPhase()
+	public void StepOutputRegistrationPhase()
 	{
 		Round[] outputRegRounds = Rounds.Where(x => x.Phase == Phase.OutputRegistration).ToArray();
 		Debug.Assert(outputRegRounds.Length == 1);
@@ -211,9 +185,10 @@ public partial class Arena
 		{
 			try
 			{
-				var allReady = round.Alices.All(a => a.ReadyToSign);
+				// TODO:
+				// var allReady = round.Alices.All(a => a.ReadyToSign);
+				var allReady = true;
 				Debug.Assert(allReady);
-
 				if (allReady)
 				{
 					var coinjoin = round.Assert<ConstructionState>();
@@ -244,9 +219,10 @@ public partial class Arena
 		}
 	}
 
-	private void StepTransactionSigningPhaseAsync()
+	public void StepTransactionSigningPhase()
 	{
 		Round[] txSigningRounds = Rounds.Where(x => x.Phase == Phase.TransactionSigning).ToArray();
+		Debug.Assert(txSigningRounds.Length == 1);
 		foreach (var round in txSigningRounds)
 		{
 			var state = round.Assert<SigningState>();
@@ -324,15 +300,9 @@ public partial class Arena
 				}
 				else 
 				{
-					round.LogWarning($"Signing phase failed.");
-					if (round.FastSigningPhase)
-					{
-						FailFastTransactionSigningPhaseAsync(round);
-					}
-					else
-					{
-						FailTransactionSigningPhaseAsync(round);
-					}
+					// TODO: The og code fails the round and tries to create a blame round. 
+					// We don't do blame rounds, so for now it's like this.
+					Debug.Assert(false);
 				}
 			}
 			catch (RPCException ex)
@@ -361,204 +331,27 @@ public partial class Arena
 		}
 		return alices;
 	}
-
-	private async Task FailTransactionSigningPhaseAsync(Round round, CancellationToken cancellationToken)
+	
+	public void CreateRound()
 	{
-		var state = round.Assert<SigningState>();
-
-		var unsignedOutpoints = state.UnsignedInputs.Select(c => c.Outpoint).ToHashSet();
-
-		var alicesWhoDidNotSign = round.Alices
-			.Where(alice => unsignedOutpoints.Contains(alice.Coin.Outpoint))
-			.ToHashSet();
-
-		if (ReasonableOffendersCount(alicesWhoDidNotSign.Count, round.Parameters.MinInputCountByRound))
-		{
-			foreach (var alice in alicesWhoDidNotSign)
-			{
-				_prison.FailedToSign(alice.Coin.Outpoint, alice.Coin.Amount, round.Id);
-			}
-		}
-		else
-		{
-			Logger.LogWarning($"{round.Id}: Tried to ban {alicesWhoDidNotSign.Count} inputs for FailedToConfirm - ban was skipped.");
-			foreach (var alice in alicesWhoDidNotSign)
-			{
-				_prison.BackendStabilitySafetyBan(alice.Coin.Outpoint, round.Id);
-			}
-		}
-
-		var cnt = round.Alices.RemoveAll(alice => unsignedOutpoints.Contains(alice.Coin.Outpoint));
-
-		round.LogInfo($"Removed {cnt} alices, because they didn't sign. Remaining: {round.InputCount}");
-
-		await EndRoundAndTryCreateBlameRoundAsync(round, cancellationToken).ConfigureAwait(false);
+		// NOTE: If we are creating a new round, then the previous round should already 
+		// have ended and been removed.
+		Debug.Assert(Rounds.Count == 0);
+		
+		FeeRate feeRate = Rpc.EstimateConservativeSmartFee((int)_config.ConfirmationTarget).FeeRate;
+		RoundParameters parameters = _roundParameterFactory.CreateRoundParameter(feeRate, MaxSuggestedAmountProvider.MaxSuggestedAmount);
+		Round r = new Round(parameters, SecureRandom.Instance);
+		AddRound(r);
+		r.LogInfo($"Created round with parameters: {nameof(r.Parameters.MaxSuggestedAmount)}:'{r.Parameters.MaxSuggestedAmount}' BTC.");
 	}
 
-	private async Task FailFastTransactionSigningPhaseAsync(Round round, CancellationToken cancellationToken)
-	{
-		var alicesToRemove = round.Alices.Where(alice => !alice.ReadyToSign).ToHashSet();
-
-		if (ReasonableOffendersCount(alicesToRemove.Count, round.Parameters.MinInputCountByRound))
-		{
-			foreach (var alice in alicesToRemove)
-			{
-				// Intentionally, do not ban Alices who have not signed, as clients using hardware wallets may not be able to sign in time.
-				_prison.FailedToSignalReadyToSign(alice.Coin.Outpoint, alice.Coin.Amount, round.Id);
-			}
-		}
-		else
-		{
-			Logger.LogWarning($"{round.Id}: Tried to ban {alicesToRemove.Count} inputs for FailedToConfirm - ban was skipped.");
-			foreach (var alice in alicesToRemove)
-			{
-				_prison.BackendStabilitySafetyBan(alice.Coin.Outpoint, round.Id);
-			}
-		}
-
-		var removedAlices = round.Alices.RemoveAll(alice => alicesToRemove.Contains(alice));
-
-		round.LogInfo($"Removed {removedAlices} alices, because they weren't ready. Remaining: {round.InputCount}");
-
-		await EndRoundAndTryCreateBlameRoundAsync(round, cancellationToken).ConfigureAwait(false);
-	}
-
-	private async Task CreateRoundsAsync(CancellationToken cancellationToken)
-	{
-		FeeRate? feeRate = null;
-
-		// Have rounds to split the volume around minimum input counts if load balance is required.
-		// Only do things if the load balancer compatibility is configured.
-		// TODO: As we are only ever doing one round at the same time, this shouldn't be needed
-		if (_config.WW200CompatibleLoadBalancing)
-		{
-			foreach (var round in Rounds.Where(x =>
-				x.Phase == Phase.InputRegistration
-				&& x is not BlameRound
-				&& !x.IsInputRegistrationEnded(x.Parameters.MaxInputCountByRound)
-				&& x.InputCount >= _config.RoundDestroyerThreshold).ToArray())
-			{
-				feeRate = Rpc.EstimateConservativeSmartFee((int)_config.ConfirmationTarget).FeeRate;
-
-				var allInputs = round.Alices.Select(y => y.Coin.Amount).OrderBy(x => x).ToArray();
-
-				// 0.75 to bias towards larger numbers as larger input owners often have many smaller inputs too.
-				var smallSuggestion = allInputs.Skip((int)(allInputs.Length * _config.WW200CompatibleLoadBalancingInputSplit)).First();
-				var largeSuggestion = round.Parameters.AllowedInputAmounts.Max;
-
-				var roundWithoutThis = Rounds.Except(new[] { round });
-				RoundParameters parameters = _roundParameterFactory.CreateRoundParameter(feeRate, largeSuggestion);
-				Round? foundLargeRound = roundWithoutThis
-					.FirstOrDefault(x =>
-									x.Phase == Phase.InputRegistration
-									&& x is not BlameRound
-									&& !x.IsInputRegistrationEnded(round.Parameters.MaxInputCountByRound)
-									&& x.Parameters.MaxSuggestedAmount >= allInputs.Max()
-									&& x.InputRegistrationTimeFrame.Remaining > TimeSpan.FromSeconds(60));
-				var largeRound = foundLargeRound ?? TryMineRound(parameters, roundWithoutThis.ToArray());
-
-				if (largeRound is not null)
-				{
-					parameters = _roundParameterFactory.CreateRoundParameter(feeRate, smallSuggestion);
-					var smallRound = TryMineRound(parameters, roundWithoutThis.Concat(new[] { largeRound }).ToArray());
-
-					// If creation is successful, only then destroy the round.
-					if (smallRound is not null)
-					{
-						AddRound(largeRound);
-						AddRound(smallRound);
-
-						if (foundLargeRound is null)
-						{
-							largeRound.LogInfo($"Mined round with parameters: {nameof(largeRound.Parameters.MaxSuggestedAmount)}:'{largeRound.Parameters.MaxSuggestedAmount}' BTC.");
-						}
-						smallRound.LogInfo($"Mined round with parameters: {nameof(smallRound.Parameters.MaxSuggestedAmount)}:'{smallRound.Parameters.MaxSuggestedAmount}' BTC.");
-
-						// If it can't create the large round, then don't abort.
-						EndRound(round, EndRoundState.AbortedLoadBalancing);
-						Logger.LogInfo($"Destroyed round with {allInputs.Length} inputs. Threshold: {_config.RoundDestroyerThreshold}");
-					}
-				}
-			}
-		}
-
-		// Add more rounds if not enough.
-		var registrableRoundCount = Rounds.Count(x => x is not BlameRound && x.Phase == Phase.InputRegistration && x.InputRegistrationTimeFrame.Remaining > TimeSpan.FromMinutes(1));
-		int roundsToCreate = _config.RoundParallelization - registrableRoundCount;
-		for (int i = 0; i < roundsToCreate; i++)
-		{
-			feeRate ??= Rpc.EstimateConservativeSmartFee((int)_config.ConfirmationTarget).FeeRate;
-			RoundParameters parameters = _roundParameterFactory.CreateRoundParameter(feeRate, MaxSuggestedAmountProvider.MaxSuggestedAmount);
-
-			var r = new Round(parameters, SecureRandom.Instance);
-			AddRound(r);
-			r.LogInfo($"Created round with parameters: {nameof(r.Parameters.MaxSuggestedAmount)}:'{r.Parameters.MaxSuggestedAmount}' BTC.");
-		}
-	}
-
-	private Round? TryMineRound(RoundParameters parameters, Round[] rounds)
-	{
-		// Huge HACK to keep it compatible with WW2.0.0 client version, which's
-		// round preference is based on the ordering of ToImmutableDictionary.
-		// Add round until ToImmutableDictionary orders it to be the first round
-		// so old clients will prefer that one.
-		IOrderedEnumerable<Round>? orderedRounds;
-		Round r;
-		var before = DateTimeOffset.UtcNow;
-		var times = 0;
-		var maxCycleTimes = 300;
-		do
-		{
-			var roundsCopy = rounds.ToList();
-			r = new Round(parameters, SecureRandom.Instance);
-			roundsCopy.Add(r);
-			orderedRounds = roundsCopy
-				.Where(x => x.Phase == Phase.InputRegistration && x is not BlameRound && !x.IsInputRegistrationEnded(x.Parameters.MaxInputCountByRound))
-				.OrderBy(x => x.Parameters.MaxSuggestedAmount)
-				.ThenBy(x => x.InputCount);
-			times++;
-		}
-		while (times <= maxCycleTimes && orderedRounds.ToImmutableDictionary(x => x.Id, x => x).First().Key != r.Id);
-
-		Logger.LogDebug($"First ordered round creator did {times} cycles.");
-
-		if (times > maxCycleTimes)
-		{
-			r.LogInfo("First ordered round creation too expensive. Skipping...");
-			return null;
-		}
-		else
-		{
-			return r;
-		}
-	}
-
-	private void TimeoutRounds()
+	public void TimeoutRounds()
 	{
 		Round[] expiredRounds = Rounds.Where(x =>x.Phase == Phase.Ended).ToArray();
 		Debug.Assert(expiredRounds.Length == 1);
 		foreach (var expiredRound in expiredRounds)
 		{
 			Rounds.Remove(expiredRound);
-		}
-	}
-
-	private void TimeoutAlices()
-	{
-		var now = DateTimeOffset.UtcNow;
-		foreach (var round in Rounds.Where(x => !x.IsInputRegistrationEnded(x.Parameters.MaxInputCountByRound)).ToArray())
-		{
-			var alicesToRemove = round.Alices.Where(x => x.Deadline < now && !x.ConfirmedConnection).ToArray();
-			foreach (var alice in alicesToRemove)
-			{
-				round.Alices.Remove(alice);
-			}
-
-			var removedAliceCount = alicesToRemove.Length;
-			if (removedAliceCount > 0)
-			{
-				round.LogInfo($"{removedAliceCount} alices timed out and removed.");
-			}
 		}
 	}
 

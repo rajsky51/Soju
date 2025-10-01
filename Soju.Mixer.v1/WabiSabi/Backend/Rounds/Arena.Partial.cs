@@ -23,7 +23,8 @@ public partial class Arena : IWabiSabiApiRequestHandler
 		catch (Exception ex) when (IsUserCheating(ex))
 		{
 			Logger.LogInfo($"{request.Input} is cheating: {ex.Message}");
-			_prison.CheatingDetected(request.Input, request.RoundId);
+			// TODO: 
+			// _prison.CheatingDetected(request.Input, request.RoundId);
 			throw;
 		}
 	}
@@ -125,7 +126,8 @@ public partial class Arena : IWabiSabiApiRequestHandler
 			var round = GetRound(request.RoundId);
 			var alice = GetAlice(request.AliceId, round);
 			Logger.LogInfo($"{alice.Coin.Outpoint} is cheating: {ex.Message}");
-			_prison.CheatingDetected(alice.Coin.Outpoint, request.RoundId);
+			// TODO:
+			// _prison.CheatingDetected(alice.Coin.Outpoint, request.RoundId);
 			throw;
 		}
 	}
@@ -335,12 +337,14 @@ public partial class Arena : IWabiSabiApiRequestHandler
 
 	private void CheckCoinIsNotBanned(OutPoint input, Round round)
 	{
-		var banningTime = _prison.GetBanTimePeriod(input, _config.GetDoSConfiguration());
-		if (banningTime.Includes(DateTimeOffset.UtcNow))
-		{
-			round.LogInfo($"{input} rejected. Banned until {banningTime.EndTime}");
-			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.InputBanned, exceptionData: new InputBannedExceptionData(banningTime.EndTime));
-		}
+		// TODO:
+		return;
+		// var banningTime = _prison.GetBanTimePeriod(input, _config.GetDoSConfiguration());
+		// if (banningTime.Includes(DateTimeOffset.UtcNow))
+		// {
+		// 	round.LogInfo($"{input} rejected. Banned until {banningTime.EndTime}");
+		// 	throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.InputBanned, exceptionData: new InputBannedExceptionData(banningTime.EndTime));
+		// }
 	}
 
 	private Round GetRound(uint256 roundId) =>

@@ -5,5 +5,5 @@ namespace Soju;
 
 public interface IMixer
 {
-	CoinjoinResult CompleteMix(IEnumerable<IWallet> wallets);
+	void CompleteMix();
 }

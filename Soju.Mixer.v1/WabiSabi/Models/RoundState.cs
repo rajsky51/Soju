@@ -9,7 +9,6 @@ using CredentialIssuerParameters = WabiSabi.Crypto.CredentialIssuerParameters;
 namespace Soju.WabiSabi.Models;
 
 public record RoundState(uint256 Id,
-	uint256 BlameOf,
 	CredentialIssuerParameters AmountCredentialIssuerParameters,
 	CredentialIssuerParameters VsizeCredentialIssuerParameters,
 	Phase Phase,
@@ -36,12 +35,10 @@ public record RoundState(uint256 Id,
 		VsizeCredentialIssuerParameters));
 
 	public bool IsRoundIdMatching() => Id == _calculatedRoundId.Value;
-	public bool IsBlame => BlameOf != uint256.Zero;
 
 	public static RoundState FromRound(Round round, int stateId = 0) =>
 		new(
 			round.Id,
-			BlameOf: uint256.Zero,
 			round.AmountCredentialIssuerParameters,
 			round.VsizeCredentialIssuerParameters,
 			round.Phase,
@@ -53,7 +50,6 @@ public record RoundState(uint256 Id,
 	public RoundState GetSubState(int skipFromBaseState) =>
 		new(
 			Id,
-			BlameOf,
 			AmountCredentialIssuerParameters,
 			VsizeCredentialIssuerParameters,
 			Phase,

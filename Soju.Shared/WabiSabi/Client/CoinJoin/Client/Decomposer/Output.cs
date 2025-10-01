@@ -1,4 +1,5 @@
 using NBitcoin;
+using Soju.Extensions;
 
 namespace Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
 

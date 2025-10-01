@@ -57,9 +57,9 @@ public static class NBitcoinExtensions
 // 	/// <summary>
 // 	/// Based on transaction data, it decides if it's possible that native segwit script played a par in this transaction.
 // 	/// </summary>
-// 	public static bool SegWitInvolved(this Transaction me) =>
-// 		me.Inputs.Any(i => Script.IsNullOrEmpty(i.ScriptSig)) ||
-// 		me.Outputs.Any(o => o.ScriptPubKey.IsScriptType(ScriptType.Witness));
+	public static bool SegWitInvolved(this Transaction me) =>
+		me.Inputs.Any(i => Script.IsNullOrEmpty(i.ScriptSig)) ||
+		me.Outputs.Any(o => o.ScriptPubKey.IsScriptType(ScriptType.Witness));
 
 	public static IEnumerable<(Money value, int count)> GetIndistinguishableOutputs(this Transaction me, bool includeSingle)
 	{
@@ -349,8 +349,8 @@ public static class NBitcoinExtensions
 			_ => throw new NotImplementedException($"Size estimation isn't implemented for provided script type.")
 		};
 
-// 	public static Money EffectiveCost(this TxOut output, FeeRate feeRate) =>
-// 		output.Value + feeRate.GetFee(output.ScriptPubKey.EstimateOutputVsize());
+	public static Money EffectiveCost(this TxOut output, FeeRate feeRate) =>
+		output.Value + feeRate.GetFee(output.ScriptPubKey.EstimateOutputVsize());
 
 	public static Money EffectiveValue(this ICoin coin, FeeRate feeRate)
 		=> EffectiveValue(coin.TxOut.Value, virtualSize: coin.TxOut.ScriptPubKey.EstimateInputVsize(), feeRate);

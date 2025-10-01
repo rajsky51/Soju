@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using WabiSabi.Crypto.Randomness;
+using Soju.Blockchain.Transactions;
 
 namespace Soju.Extensions;
 
@@ -101,11 +102,11 @@ public static class LinqExtensions
 			.SelectMany(len => items.CombinationsWithoutRepetition(ofLength: len));
 	}
 
-	// public static IOrderedEnumerable<SmartTransaction> OrderByBlockchain(this IEnumerable<SmartTransaction> me)
-	// 	=> me
-	// 		.OrderBy(x => x.Height)
-	// 		.ThenBy(x => x.BlockIndex)
-	// 		.ThenBy(x => x.FirstSeen);
+	public static IOrderedEnumerable<SmartTransaction> OrderByBlockchain(this IEnumerable<SmartTransaction> me)
+		=> me
+			.OrderBy(x => x.Height)
+			.ThenBy(x => x.BlockIndex)
+			.ThenBy(x => x.FirstSeen);
 
 	// public static IOrderedEnumerable<TransactionSummary> OrderByBlockchain(this IEnumerable<TransactionSummary> me)
 	// 	=> me
@@ -150,8 +151,8 @@ public static class LinqExtensions
 		}
 	}
 
-	// public static bool IsSuperSetOf<T>(this IEnumerable<T> me, IEnumerable<T> other) =>
-	// 	other.All(x => me.Contains(x));
+	public static bool IsSuperSetOf<T>(this IEnumerable<T> me, IEnumerable<T> other) =>
+		other.All(x => me.Contains(x));
 
 	public static IEnumerable<T> TakeUntil<T>(this IEnumerable<T> list, Func<T, bool> predicate)
 	{
