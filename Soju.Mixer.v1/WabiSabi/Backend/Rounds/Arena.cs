@@ -67,14 +67,13 @@ public partial class Arena
 				{
 					round.Alices.RemoveAll(x => offendingAlices.Contains(x));
 				}
-
 				if (round.InputCount < round.Parameters.MinInputCountByRound)
 				{
 					MaxSuggestedAmountProvider.StepMaxSuggested(round, false);
 					EndRound(round, EndRoundState.AbortedNotEnoughAlices);
 					round.LogInfo($"Not enough inputs ({round.InputCount}) in {nameof(Phase.InputRegistration)} phase. The minimum is ({round.Parameters.MinInputCountByRound}). {nameof(round.Parameters.MaxSuggestedAmount)} was '{round.Parameters.MaxSuggestedAmount}' BTC.");
 				}
-				else if (round.IsInputRegistrationEnded(round.Parameters.MaxInputCountByRound))
+				else
 				{
 					MaxSuggestedAmountProvider.StepMaxSuggested(round, true);
 					SetRoundPhase(round, Phase.ConnectionConfirmation);
@@ -188,7 +187,6 @@ public partial class Arena
 				// TODO:
 				// var allReady = round.Alices.All(a => a.ReadyToSign);
 				var allReady = true;
-				Debug.Assert(allReady);
 				if (allReady)
 				{
 					var coinjoin = round.Assert<ConstructionState>();
@@ -205,9 +203,8 @@ public partial class Arena
 				} 
 				else 
 				{
-					// TODO: Due to the assert above this never happens, but let's have it here
-					// NOTE: Contrary to the original code we are ending the round here. In the original they would go 
-					// to FastSigningPhase
+					// NOTE: Contrary to the original code we are ending the round here.
+					// In the original they would go to FastSigningPhase
 					EndRound(round, EndRoundState.AbortedWithError);
 				}
 			}
@@ -219,103 +216,107 @@ public partial class Arena
 		}
 	}
 
-	public void StepTransactionSigningPhase()
+	// NOTE: Returns the coinjoin transaction's id, if everything goes well
+	public uint256 StepTransactionSigningPhase()
 	{
 		Round[] txSigningRounds = Rounds.Where(x => x.Phase == Phase.TransactionSigning).ToArray();
 		Debug.Assert(txSigningRounds.Length == 1);
-		foreach (var round in txSigningRounds)
+		
+		Round round = txSigningRounds[0];
+		var state = round.Assert<SigningState>();
+
+		try
 		{
-			var state = round.Assert<SigningState>();
-
-			try
+			// TODO: Actually when simulating a cheating coordinator, the clients may
+			// not want to sign the transaction
+			Debug.Assert(state.IsFullySigned);
+			if (state.IsFullySigned)
 			{
-				// TODO: Actually when simulating a cheating coordinator, the clients may not want to sign the transaction
-				Debug.Assert(state.IsFullySigned);
-				if (state.IsFullySigned)
+				Transaction coinjoin = state.CreateTransaction();
+
+				// Logging.
+				round.LogInfo("Trying to broadcast coinjoin.");
+				Coin[] spentCoins = round.CoinjoinState.Inputs.ToArray();
+				Money networkFee = coinjoin.GetFee(spentCoins);
+				round.LogInfo($"Network Fee: {networkFee.ToString(false, false)} BTC.");
+				uint256 roundId = round.Id;
+				FeeRate feeRate = coinjoin.GetFeeRate(spentCoins);
+				round.LogInfo($"Network Fee Rate: {feeRate.SatoshiPerByte} sat/vByte.");
+				round.LogInfo($"Desired Fee Rate: {round.Parameters.MiningFeeRate.SatoshiPerByte} sat/vByte.");
+
+				// Added for monitoring reasons.
+				try
 				{
-					Transaction coinjoin = state.CreateTransaction();
-
-					// Logging.
-					round.LogInfo("Trying to broadcast coinjoin.");
-					Coin[] spentCoins = round.CoinjoinState.Inputs.ToArray();
-					Money networkFee = coinjoin.GetFee(spentCoins);
-					round.LogInfo($"Network Fee: {networkFee.ToString(false, false)} BTC.");
-					uint256 roundId = round.Id;
-					FeeRate feeRate = coinjoin.GetFeeRate(spentCoins);
-					round.LogInfo($"Network Fee Rate: {feeRate.SatoshiPerByte} sat/vByte.");
-					round.LogInfo($"Desired Fee Rate: {round.Parameters.MiningFeeRate.SatoshiPerByte} sat/vByte.");
-
-					// Added for monitoring reasons.
-					try
-					{
-						FeeRate targetFeeRate = Rpc.EstimateConservativeSmartFee((int)_config.ConfirmationTarget).FeeRate;
-						round.LogInfo($"Current Fee Rate on the Network: {targetFeeRate.SatoshiPerByte} sat/vByte. Confirmation target is: {(int)_config.ConfirmationTarget} blocks.");
-					}
-					catch (Exception ex)
-					{
-						Logger.LogDebug($"Could not log fee rate monitoring: '{ex.Message}'.");
-					}
-
-					round.LogInfo($"Number of inputs: {coinjoin.Inputs.Count}.");
-					round.LogInfo($"Number of outputs: {coinjoin.Outputs.Count}.");
-					round.LogInfo($"Serialized Size: {coinjoin.GetSerializedSize() / 1024.0} KB.");
-					round.LogInfo($"VSize: {coinjoin.GetVirtualSize() / 1024.0} KB.");
-					var indistinguishableOutputs = coinjoin.GetIndistinguishableOutputs(includeSingle: true);
-					foreach (var (value, count) in indistinguishableOutputs.Where(x => x.count > 1))
-					{
-						round.LogInfo($"There are {count} occurrences of {value.ToString(true, false)} outputs.");
-					}
-
-					round.LogInfo(
-						$"There are {indistinguishableOutputs.Count(x => x.count == 1)} occurrences of unique outputs.");
-
-					// Broadcasting.
-					Rpc.SendRawTransaction(coinjoin);
-					EndRound(round, EndRoundState.TransactionBroadcasted);
-					round.LogInfo($"Successfully broadcast the coinjoin: {coinjoin.GetHash()}.");
-
-					var coordinatorScriptPubKey = _config.GetNextCleanCoordinatorScript();
-					if (round.CoordinatorScript == coordinatorScriptPubKey)
-					{
-						_config.MakeNextCoordinatorScriptDirty();
-					}
-
-					foreach (var address in coinjoin.Outputs
-						.Select(x => x.ScriptPubKey)
-						.Where(script => CoinJoinScriptStore?.Contains(script) is true))
-					{
-						if (address == round.CoordinatorScript)
-						{
-							round.LogError(
-								$"Coordinator script pub key reuse detected: {round.CoordinatorScript.ToHex()}");
-						}
-						else
-						{
-							round.LogError($"Output script pub key reuse detected: {address.ToHex()}");
-						}
-					}
-
-					CoinJoinScriptStore?.AddRange(coinjoin.Outputs.Select(x => x.ScriptPubKey));
-					CoinJoinBroadcast?.Invoke(this, coinjoin);
+					FeeRate targetFeeRate = Rpc.EstimateConservativeSmartFee((int)_config.ConfirmationTarget).FeeRate;
+					round.LogInfo($"Current Fee Rate on the Network: {targetFeeRate.SatoshiPerByte} sat/vByte. Confirmation target is: {(int)_config.ConfirmationTarget} blocks.");
 				}
-				else 
+				catch (Exception ex)
 				{
-					// TODO: The og code fails the round and tries to create a blame round. 
-					// We don't do blame rounds, so for now it's like this.
-					Debug.Assert(false);
+					Logger.LogDebug($"Could not log fee rate monitoring: '{ex.Message}'.");
 				}
+
+				round.LogInfo($"Number of inputs: {coinjoin.Inputs.Count}.");
+				round.LogInfo($"Number of outputs: {coinjoin.Outputs.Count}.");
+				round.LogInfo($"Serialized Size: {coinjoin.GetSerializedSize() / 1024.0} KB.");
+				round.LogInfo($"VSize: {coinjoin.GetVirtualSize() / 1024.0} KB.");
+				var indistinguishableOutputs = coinjoin.GetIndistinguishableOutputs(includeSingle: true);
+				foreach (var (value, count) in indistinguishableOutputs.Where(x => x.count > 1))
+				{
+					round.LogInfo($"There are {count} occurrences of {value.ToString(true, false)} outputs.");
+				}
+
+				round.LogInfo(
+					$"There are {indistinguishableOutputs.Count(x => x.count == 1)} occurrences of unique outputs.");
+
+				// Broadcasting.
+				Rpc.SendRawTransaction(coinjoin);
+				EndRound(round, EndRoundState.TransactionBroadcasted);
+				round.LogInfo($"Successfully broadcast the coinjoin: {coinjoin.GetHash()}.");
+
+				var coordinatorScriptPubKey = _config.GetNextCleanCoordinatorScript();
+				if (round.CoordinatorScript == coordinatorScriptPubKey)
+				{
+					_config.MakeNextCoordinatorScriptDirty();
+				}
+
+				foreach (var address in coinjoin.Outputs
+					.Select(x => x.ScriptPubKey)
+					.Where(script => CoinJoinScriptStore?.Contains(script) is true))
+				{
+					if (address == round.CoordinatorScript)
+					{
+						round.LogError(
+							$"Coordinator script pub key reuse detected: {round.CoordinatorScript.ToHex()}");
+					}
+					else
+					{
+						round.LogError($"Output script pub key reuse detected: {address.ToHex()}");
+					}
+				}
+
+				CoinJoinScriptStore?.AddRange(coinjoin.Outputs.Select(x => x.ScriptPubKey));
+				CoinJoinBroadcast?.Invoke(this, coinjoin);
+				
+				return coinjoin.GetHash();
 			}
-			catch (RPCException ex)
+			else 
 			{
-				round.LogError($"Transaction broadcasting failed: '{ex}'.");
-				EndRound(round, EndRoundState.TransactionBroadcastFailed);
-			}
-			catch (Exception ex)
-			{
-				round.LogWarning($"Signing phase failed, reason: '{ex}'.");
-				EndRound(round, EndRoundState.AbortedWithError);
+				// TODO: The og code fails the round and tries to create a blame round. 
+				// We don't do blame rounds, so for now it's like this.
+				Debug.Assert(false);
 			}
 		}
+		catch (RPCException ex)
+		{
+			round.LogError($"Transaction broadcasting failed: '{ex}'.");
+			EndRound(round, EndRoundState.TransactionBroadcastFailed);
+		}
+		catch (Exception ex)
+		{
+			round.LogWarning($"Signing phase failed, reason: '{ex}'.");
+			EndRound(round, EndRoundState.AbortedWithError);
+		}
+		return uint256.Zero;
 	}
 
 	private List<Alice> CheckTxoSpendStatus(Round round)
@@ -348,7 +349,7 @@ public partial class Arena
 	public void TimeoutRounds()
 	{
 		Round[] expiredRounds = Rounds.Where(x =>x.Phase == Phase.Ended).ToArray();
-		Debug.Assert(expiredRounds.Length == 1);
+		// Debug.Assert(expiredRounds.Length == 1);
 		foreach (var expiredRound in expiredRounds)
 		{
 			Rounds.Remove(expiredRound);

@@ -33,9 +33,9 @@ public class LiquidityClueProvider
 	public void InitLiquidityClue(Transaction lastCoinJoin, IEnumerable<TxOut> walletTxOuts) =>
 		InitLiquidityClue(GetForeignOutputsValues(lastCoinJoin, walletTxOuts));
 
-	public async Task InitLiquidityClueAsync(IWallet wallet)
+	public void InitLiquidityClue(IWallet wallet)
 	{
-		var transactions = await wallet.GetTransactionsAsync().ConfigureAwait(false);
+		var transactions = wallet.GetTransactions();
 		if (transactions.LastOrDefault(x => x.IsOwnCoinjoin()) is { } lastCoinJoin)
 		{
 			InitLiquidityClue(lastCoinJoin.Transaction, lastCoinJoin.WalletOutputs.Select(x => x.TxOut));

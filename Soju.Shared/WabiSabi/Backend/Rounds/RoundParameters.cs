@@ -85,7 +85,6 @@ public record RoundParameters
 			wabiSabiConfig.CoordinatorIdentifier);
 	}
 	
-	// TODO: Ideally this should be done through some central system so we can track transactions
 	public Transaction CreateTransaction()
 		=> Transaction.Create(Network);
 }

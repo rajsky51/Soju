@@ -48,5 +48,16 @@ public class MyRpc : IRPCClient
 		}
 		return null;
 	}
+	
+	// NOTE: Should only ever be used if we know the 
+	public Transaction GetRawTransaction(uint256 txid, bool throwIfNotFound = true)
+	{
+		if (Transactions.TryGetValue(txid, out Transaction tx))
+		{
+			return tx;
+		}
+		Debug.Assert(false, "Queried for a non-existing transaction");
+		return tx; // NOTE: Satisfying the compiler
+	}
 }
 

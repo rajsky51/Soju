@@ -4,7 +4,6 @@ using System.Linq;
 using Soju.Blockchain.Analysis;
 using Soju.Blockchain.Analysis.Clustering;
 using Soju.Blockchain.Keys;
-using Soju.Blockchain.Mempool;
 using Soju.Blockchain.TransactionOutputs;
 using Soju.Blockchain.Transactions;
 using Soju.Extensions;

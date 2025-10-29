@@ -22,8 +22,9 @@ public static class RPCClientExtensions
 	
 	private static EstimateSmartFeeResponse SimulateRegTestFeeEstimation(int confirmationTarget)
 	{
-		// TODO: We should be able to calculate this based on feeRate given in scenario
-		int satoshiPerByte = (Constants.SevenDaysConfirmationTarget + 1 + 6 - confirmationTarget) / 7;
+		// TODO: Hack; We should be able to calculate this based on feeRate given in scenario
+		// int satoshiPerByte = (Constants.SevenDaysConfirmationTarget + 1 + 6 - confirmationTarget) / 7;
+		int satoshiPerByte = 2;
 		Money feePerK = Money.Satoshis(satoshiPerByte * 1000);
 		FeeRate feeRate = new(feePerK);
 		var resp = new EstimateSmartFeeResponse { Blocks = confirmationTarget, FeeRate = feeRate };

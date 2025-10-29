@@ -18,17 +18,14 @@ public class ArenaClient
 	public ArenaClient(
 		WabiSabiClient amountCredentialClient,
 		WabiSabiClient vsizeCredentialClient,
-		string coordinatorIdentifier,
-		IWabiSabiApiRequestHandler requestHandler)
+		string coordinatorIdentifier)
 	{
 		AmountCredentialClient = amountCredentialClient;
 		VsizeCredentialClient = vsizeCredentialClient;
 		CoordinatorIdentifier = coordinatorIdentifier;
-		RequestHandler = requestHandler;
 	}
 
 	public WabiSabiClient AmountCredentialClient { get; }
 	public WabiSabiClient VsizeCredentialClient { get; }
 	public string CoordinatorIdentifier { get; }
-	public IWabiSabiApiRequestHandler RequestHandler { get; }
 }

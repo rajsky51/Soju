@@ -1,9 +1,8 @@
-using Soju.WabiSabi.Client.CoinJoin;
-using Soju.Wallets;
+using NBitcoin;
 
 namespace Soju;
 
 public interface IMixer
 {
-	void CompleteMix();
+	uint256 CompleteMix();
 }

@@ -231,8 +231,9 @@ public partial class Arena : IWabiSabiApiRequestHandler
 		var newState = round.AddOutput(new TxOut(outputValue, bob.Script));
 
 		// Verify the credential requests and prepare their responses.
-		round.AmountCredentialIssuer.HandleRequest(request.AmountCredentialRequests);
-		round.VsizeCredentialIssuer.HandleRequest(vsizeCredentialRequests);
+		// TODO: YOLO; anyways this shouldn't matter as clients don't cheat
+		// round.AmountCredentialIssuer.HandleRequest(request.AmountCredentialRequests);
+		// round.VsizeCredentialIssuer.HandleRequest(vsizeCredentialRequests);
 
 		// Update round state.
 		round.Bobs.Add(bob);

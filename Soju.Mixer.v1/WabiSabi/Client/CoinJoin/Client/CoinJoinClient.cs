@@ -18,7 +18,6 @@ using Soju.WabiSabi.Backend.Models;
 using Soju.WabiSabi.Backend.PostRequests;
 using Soju.WabiSabi.Backend.Rounds;
 using Soju.WabiSabi.Client.CredentialDependencies;
-using Soju.WabiSabi.Client.RoundStateAwaiters;
 using Soju.WabiSabi.Client.StatusChangedEvents;
 using Soju.WabiSabi.Models;
 using Soju.WabiSabi.Models.MultipartyTransaction;
@@ -32,20 +31,16 @@ public class CoinJoinClient
 	private static readonly Money MinimumOutputAmountSanity = Money.Coins(0.0001m); // ignore rounds with too big minimum denominations
 
 	public CoinJoinClient(
-		Func<string,IWabiSabiApiRequestHandler> arenaRequestHandlerFactory,
 		IKeyChain keyChain,
 		OutputProvider outputProvider,
-		RoundStateUpdater roundStatusUpdater,
 		CoinJoinCoinSelector coinJoinCoinSelector,
 		CoinJoinConfiguration coinJoinConfiguration,
 		LiquidityClueProvider liquidityClueProvider,
 		TimeSpan feeRateMedianTimeFrame = default,
 		CoinjoinSkipFactors? skipFactors = null)
 	{
-		ArenaRequestHandlerFactory = arenaRequestHandlerFactory;
 		_keyChain = keyChain;
 		_outputProvider = outputProvider;
-		_roundStatusUpdater = roundStatusUpdater;
 		_liquidityClueProvider = liquidityClueProvider;
 		_coinJoinConfiguration = coinJoinConfiguration;
 		_coinJoinCoinSelector = coinJoinCoinSelector;
@@ -54,15 +49,14 @@ public class CoinJoinClient
 		_secureRandom = new SecureRandom();
 		
 		PendingInputRegistrationRequests = new Dictionary<Guid, InputRegistrationRequestData>{};
+		PendingConnectionConfirmationRequests = new Dictionary<Guid, ConnectionConfirmationRequestData>{};
 	}
 
 	public ImmutableList<SmartCoin> CoinsInCriticalPhase { get; private set; } = ImmutableList<SmartCoin>.Empty;
 
 	private readonly SecureRandom _secureRandom;
-	private Func<string, IWabiSabiApiRequestHandler> ArenaRequestHandlerFactory { get; }
 	private readonly IKeyChain _keyChain;
 	private readonly OutputProvider _outputProvider;
-	private readonly RoundStateUpdater _roundStatusUpdater;
 	private readonly LiquidityClueProvider _liquidityClueProvider;
 	private readonly CoinJoinConfiguration _coinJoinConfiguration;
 	private readonly CoinJoinCoinSelector _coinJoinCoinSelector;
@@ -73,23 +67,19 @@ public class CoinJoinClient
 	public Dictionary<Guid, InputRegistrationRequestData> PendingInputRegistrationRequests;
 	public Dictionary<Guid, ConnectionConfirmationRequestData> PendingConnectionConfirmationRequests;
 
-	public IEnumerable<SmartCoin> StartCoinJoin(RoundState currentRoundState, Func<IEnumerable<SmartCoin>> coinCandidatesFunc)
-	{
-		uint256 excludeRound = uint256.Zero;
-		ImmutableList<SmartCoin> coins;
-		IEnumerable<SmartCoin> coinCandidates;
-
-		// Sanity check if we would get coins at all otherwise this will throw.
-		coinCandidatesFunc();
+	public IEnumerable<SmartCoin> StartCoinJoin(RoundState currentRoundState, IEnumerable<SmartCoin> coinCandidates)
+	{	
+		Debug.Assert(coinCandidates.Any());
 
 		RoundParameters roundParameters = currentRoundState.CoinjoinState.Parameters;
-
-		if (!IsRoundEconomic(roundParameters.MiningFeeRate, _roundStatusUpdater.CoinJoinFeeRateMedians, _feeRateMedianTimeFrame))
-		{
-			string roundSkippedMessage = "Uneconomical round skipped.";
-			currentRoundState.LogInfo(roundSkippedMessage);
-			throw new CoinJoinClientException(CoinjoinError.UneconomicalRound, roundSkippedMessage);
-		}
+		
+		// TODO:
+		// if (!IsRoundEconomic(roundParameters.MiningFeeRate, _roundStatusUpdater.CoinJoinFeeRateMedians, _feeRateMedianTimeFrame))
+		// {
+		// 	string roundSkippedMessage = "Uneconomical round skipped.";
+		// 	currentRoundState.LogInfo(roundSkippedMessage);
+		// 	throw new CoinJoinClientException(CoinjoinError.UneconomicalRound, roundSkippedMessage);
+		// }
 		if (roundParameters.MiningFeeRate.SatoshiPerByte > _coinJoinConfiguration.MaxCoinJoinMiningFeeRate)
 		{
 			string roundSkippedMessage = $"Mining fee rate was {roundParameters.MiningFeeRate} but max allowed is {_coinJoinConfiguration.MaxCoinJoinMiningFeeRate}.";
@@ -103,36 +93,31 @@ public class CoinJoinClient
 			throw new CoinJoinClientException(CoinjoinError.MinInputCountTooLow, roundSkippedMessage);
 		}
 		// TODO: Redo this, because it uses time
-		if (_skipFactors.ShouldSkipRoundRandomly(_secureRandom, roundParameters.MiningFeeRate, _roundStatusUpdater.CoinJoinFeeRateMedians, currentRoundState.Id))
-		{
-			string roundSkippedMessage = "Round skipped randomly for better privacy.";
-			currentRoundState.LogInfo(roundSkippedMessage);
-			throw new CoinJoinClientException(CoinjoinError.RandomlySkippedRound, roundSkippedMessage);
-		}
-
-		coinCandidates = coinCandidatesFunc();
+		// if (_skipFactors.ShouldSkipRoundRandomly(_secureRandom, roundParameters.MiningFeeRate, _roundStatusUpdater.CoinJoinFeeRateMedians, currentRoundState.Id))
+		// {
+		// 	string roundSkippedMessage = "Round skipped randomly for better privacy.";
+		// 	currentRoundState.LogInfo(roundSkippedMessage);
+		// 	throw new CoinJoinClientException(CoinjoinError.RandomlySkippedRound, roundSkippedMessage);
+		// }
 
 		var liquidityClue = _liquidityClueProvider.GetLiquidityClue(roundParameters.MaxSuggestedAmount);
 		var utxoSelectionParameters = UtxoSelectionParameters.FromRoundParameters(roundParameters, _outputProvider.DestinationProvider.SupportedScriptTypes.ToArray());
 
-		coins = _coinJoinCoinSelector.SelectCoinsForRound(coinCandidates, utxoSelectionParameters, liquidityClue);
+		ImmutableList<SmartCoin> coins = _coinJoinCoinSelector.SelectCoinsForRound(coinCandidates, utxoSelectionParameters, liquidityClue);
 		
-		// TODO: This just means that we will not register any inputs, we are not running
-		// in loop so we don't need to do this
+		// TODO: This just means that we will not register any inputs
 		if (!roundParameters.AllowedInputTypes.Contains(ScriptType.P2WPKH) || !roundParameters.AllowedOutputTypes.Contains(ScriptType.P2WPKH))
 		{
-			excludeRound = currentRoundState.Id;
 			currentRoundState.LogInfo("Skipping the round since it doesn't support P2WPKH inputs and outputs.");
-
-			continue;
+			
+			return ImmutableList<SmartCoin>.Empty;
 		}
 
 		if (roundParameters.MaxSuggestedAmount != default && coins.Any(c => c.Amount > roundParameters.MaxSuggestedAmount))
 		{
-			excludeRound = currentRoundState.Id;
 			currentRoundState.LogInfo($"Skipping the round for more optimal mixing. Max suggested amount is '{roundParameters.MaxSuggestedAmount}' BTC, biggest coin amount is: '{coins.Select(c => c.Amount).Max()}' BTC.");
 
-			continue;
+			return ImmutableList<SmartCoin>.Empty;
 		}
 
 		if (coins.IsEmpty)
@@ -192,8 +177,7 @@ public class CoinJoinClient
 				ArenaClient aliceArenaClient = new ArenaClient(
 					roundState.CreateAmountCredentialClient(_secureRandom),
 					roundState.CreateVsizeCredentialClient(_secureRandom),
-					_coinJoinConfiguration.CoordinatorIdentifier,
-					ArenaRequestHandlerFactory($"alice-{coin.Outpoint}"));
+					_coinJoinConfiguration.CoordinatorIdentifier);
 				
 				OwnershipProof ownershipProof = _keyChain.GetOwnershipProof(
 					coin,
@@ -315,7 +299,11 @@ public class CoinJoinClient
 			Guid requestGuid = Guid.NewGuid();
 			this.PendingConnectionConfirmationRequests[requestGuid] = new ConnectionConfirmationRequestData(
 				Request: request,
-				AliceClient: alice);
+				AliceClient: alice,
+				zeroAmountCredentialRequestData,
+				zeroVsizeCredentialRequestData,
+				realAmountCredentialRequestData,
+				realVsizeCredentialRequestData);
 			requests.Add(new ConnectionConfirmationRequestWithId(request, requestGuid));
 		}
 		return requests;
@@ -406,7 +394,13 @@ public class CoinJoinClient
 		
 		for (int i = 0; i < outputs.Count; i++) 
 		{
-			requests[i] = new(roundState.Id, outputs[i].ScriptPubKey, null, null);
+			TxOut output = outputs[i];
+			FeeRate feeRate = roundState.CoinjoinState.Parameters.MiningFeeRate;
+			int outputVsize = output.ScriptPubKey.EstimateOutputVsize();
+			// NOTE: Reversing the calculation in Bob.CalculateOutputAmount
+			RealCredentialsRequest amountCredentialsRequest = new(-(output.Value + feeRate.GetFee(outputVsize)), [], [], []);
+			RealCredentialsRequest vsizeCredentialsRequest = new(-outputVsize, [], [], []);
+			requests[i] = new(roundState.Id, output.ScriptPubKey, amountCredentialsRequest, vsizeCredentialsRequest );
 		}
 		return requests;
 	}

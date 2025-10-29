@@ -8,7 +8,6 @@ using Soju.WabiSabi.Backend.Models;
 using Soju.WabiSabi.Backend.Rounds;
 using Soju.WabiSabi.Models;
 using Soju.Blockchain.TransactionOutputs;
-using Soju.WabiSabi.Client.RoundStateAwaiters;
 using Soju.Extensions;
 using System.Net.Http;
 using WabiSabi.Crypto.ZeroKnowledge;

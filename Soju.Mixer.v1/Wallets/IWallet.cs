@@ -21,7 +21,7 @@ public interface IWallet
 	IKeyChain? KeyChain { get; }
 
 	IDestinationProvider DestinationProvider { get; }
-	IOutputProvider OutputProvider { get; }
+	OutputProvider OutputProvider { get; }
 	PaymentBatch BatchedPayments => new();
 
 	int AnonScoreTarget { get; }
@@ -30,9 +30,9 @@ public interface IWallet
 	bool RedCoinIsolation { get; }
 	CoinjoinSkipFactors CoinjoinSkipFactors { get; }
 
-	Task<bool> IsWalletPrivateAsync();
+	bool IsWalletPrivate();
 
-	Task<IEnumerable<SmartCoin>> GetCoinjoinCoinCandidatesAsync();
+	IEnumerable<SmartCoin> GetCoinjoinCoinCandidates();
 
-	Task<IEnumerable<SmartTransaction>> GetTransactionsAsync();
+	IEnumerable<SmartTransaction> GetTransactions();
 }

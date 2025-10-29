@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Soju.BitcoinCore.Rpc;
 using Soju.Blockchain.Analysis;
 using Soju.Blockchain.TransactionOutputs;
@@ -10,7 +11,10 @@ using Soju.Blockchain.Transactions;
 using Soju.Helpers;
 using Soju.WabiSabi.Backend.PostRequests;
 using Soju.Extensions;
+using Soju.Logging;
+using Soju.WabiSabi.Backend;
 using Soju.WabiSabi.Backend.Rounds;
+using Soju.WabiSabi.Backend.Statistics;
 using Soju.WabiSabi.Client;
 using Soju.WabiSabi.Client.CoinJoin.Client;
 using Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
@@ -23,28 +27,30 @@ namespace Soju;
 
 public class  Mixer : IMixer
 {
-	public RoundParameters RoundParams { get; }
-	private readonly BlockchainAnalyzer _bcAnalyzer;
 	public Arena Arena;
-	public List<ICoinJoinClientManager> cjManagers;
+	public CoinJoinClientManager[] CJManagers;
 
-	public Mixer(RoundParameters roundParams)
+	public Mixer(
+		CoinJoinClientManager[] cjManagers, 
+		WabiSabiConfig config, 
+		IRPCClient rpc
+		)
 	{
-		RoundParams = roundParams;
-		// TODO: Look more into why BlockchainAnalyzer isn't a static class.
-		_bcAnalyzer = new BlockchainAnalyzer();
+		Arena = new Arena(config, rpc, new RoundParameterFactory(config, rpc.Network));
+		CJManagers = cjManagers;
 	}
 
-	public void CompleteMix()
+	public uint256 CompleteMix()
 	{
 		WasabiRandom wrnd = new InsecureRandom();
 		
 		Arena.TimeoutRounds();
 		
 		Dictionary<WalletId, CoinJoinClientContext> cjCtxs = [];
-		foreach (var cjManager in cjManagers)
+		foreach (var cjManager in CJManagers)
 		{
-			cjCtxs[cjManager.GetWalletId()] = cjManager.CreateCoinJoinClientCtx();
+			CoinJoinClientContext cjCtx = cjManager.CreateCoinJoinClientCtx();
+			cjCtxs[cjCtx.WalletId] = cjCtx;
 		}
 				
 		Arena.CreateRound();
@@ -53,18 +59,41 @@ public class  Mixer : IMixer
 		Debug.Assert(Arena.RoundStates.Count == 1);
 				
 		RoundState roundState = Arena.RoundStates[0];
+		Debug.Assert(roundState.Phase == Phase.InputRegistration);
 		
-		ConcurrentBag<(WalletId WalletId, InputRegistrationRequestWithId Request)> inputRequestBag = [];
-		foreach (CoinJoinClientContext cjCtx in cjCtxs.Values) 
+		ConcurrentBag<(WalletId WalletId, List<InputRegistrationRequestWithId> Requests)> inputRequestBag = [];
+		
+		long coinSelectionSumMs = 0;
+		long inputReqCreationSumMs = 0;
+		Parallel.ForEach(cjCtxs.Values, cjCtx =>
 		{
-			IEnumerable<SmartCoin> coins = cjCtx.StartRoundAndGetCoins(roundState);
-			List<InputRegistrationRequestWithId> requests = cjCtx.CoinJoinClient.CreateInputRegistrationRequests(coins, roundState);
-			foreach (InputRegistrationRequestWithId request in requests)
+			try 
 			{
-				inputRequestBag.Add((cjCtx.WalletId, request));
+				Stopwatch sw = Stopwatch.StartNew();
+				IEnumerable<SmartCoin> coins = cjCtx.StartRoundAndGetCoins(roundState);
+				sw.Stop();
+				Interlocked.Add(ref coinSelectionSumMs, sw.ElapsedMilliseconds);
+				
+				sw.Restart();
+				List<InputRegistrationRequestWithId> requests = cjCtx.CoinJoinClient.CreateInputRegistrationRequests(coins, roundState);
+				sw.Stop();
+				Interlocked.Add(ref inputReqCreationSumMs, sw.ElapsedMilliseconds);
+				
+				inputRequestBag.Add((cjCtx.WalletId, requests));
+			} 
+			catch (Exception ex)
+			{
+				Logger.LogWarning(ex);
 			}
-		}
-		(WalletId WalletId, InputRegistrationRequestWithId RequestWithId)[] inputRequestsWithWalletIds = inputRequestBag.ToArray();
+			
+		});
+		Console.WriteLine($"Choosing inputs coins took {coinSelectionSumMs} ms");
+		Console.WriteLine($"Then creating input reg requests took {inputReqCreationSumMs} ms");
+		
+		(WalletId WalletId, InputRegistrationRequestWithId RequestWithId)[] inputRequestsWithWalletIds = 
+			inputRequestBag
+			.SelectMany(pair => pair.Requests.Select(req => (pair.WalletId, req)))
+			.ToArray();
 		inputRequestsWithWalletIds.Shuffle(wrnd);
 		
 		Dictionary<WalletId, List<InputRegistrationResponseWithId>> inputRegResponses = [];
@@ -97,19 +126,26 @@ public class  Mixer : IMixer
 		roundState = Arena.RoundStates[0];
 		Debug.Assert(roundState.Phase == Phase.ConnectionConfirmation);
 		
-		ConcurrentBag<(WalletId WalletId, ConnectionConfirmationRequestWithId RequestWithId)> ccRequestBag = [];
+		ConcurrentBag<(WalletId WalletId, List<ConnectionConfirmationRequestWithId> Requests)> ccRequestBag = [];
 		
-		foreach (CoinJoinClientContext cjCtx in cjCtxs.Values)
+		long ccReqCreationSumMs = 0;
+		Parallel.ForEach(cjCtxs.Values, cjCtx =>
 		{
+			Stopwatch sw = Stopwatch.StartNew();
 			List<ConnectionConfirmationRequestWithId> requests =  cjCtx.CoinJoinClient.CreateConnectionConfirmationRequests(aliceClientsNeedToConfirm[cjCtx.WalletId]);
-			foreach (var request in requests)
-			{
-				ccRequestBag.Add(new (cjCtx.WalletId, request));
-			}
-		}
-		(WalletId WalletId, ConnectionConfirmationRequestWithId RequestWithId)[] ccRequestsWithWalletIds = ccRequestBag.ToArray();
-		ccRequestsWithWalletIds.Shuffle(wrnd);
+			sw.Stop();
+			Interlocked.Add(ref ccReqCreationSumMs, sw.ElapsedMilliseconds);
+			
+			ccRequestBag.Add((cjCtx.WalletId, requests));
+		});
+		Console.WriteLine($"Creating connection confirmation requests took {ccReqCreationSumMs} ms");
 		
+		(WalletId WalletId, ConnectionConfirmationRequestWithId RequestWithId)[] ccRequestsWithWalletIds = 
+			ccRequestBag
+			.SelectMany(pair => pair.Requests.Select(req => (pair.WalletId, req)))
+			.ToArray();
+		ccRequestsWithWalletIds.Shuffle(wrnd);
+				
 		Dictionary<WalletId, List<ConnectionConfirmationResponseWithId>> ccResponses = [];
 		foreach(WalletId walletId in cjCtxs.Keys)
 		{
@@ -143,8 +179,18 @@ public class  Mixer : IMixer
 		{
 			ImmutableArray<AliceClient> regAliceClients = cjCtx.RegisteredAliceClients;
 			
-			(cjCtx.WantedOutputs, cjCtx.Graph) = cjCtx.CoinJoinClient.CreateOutputsAndDependencyGraph(roundState, regAliceClients);
+			try 
+			{
+				(cjCtx.WantedOutputs, cjCtx.Graph) = cjCtx.CoinJoinClient.CreateOutputsAndDependencyGraph(roundState, regAliceClients);
+			}
+			catch (Exception ex)
+			{
+				cjCtx.WantedOutputs = []; // TODO: Hack
+				Logger.LogWarning(ex);
+			}
 		}
+		
+		// TODO: Resolve dependency graph
 		
 		List<OutputRegistrationRequest> outputRegRequests = [];
 		// NOTE: Output registration
@@ -188,8 +234,12 @@ public class  Mixer : IMixer
 			Arena.SignTransaction(sigRequest);
 		}
 		
-		Arena.StepTransactionSigningPhase();
+		uint256 cjTxId = Arena.StepTransactionSigningPhase();
 		Arena.SetRoundStates();
-		Debug.Assert(Arena.RoundStates[0].Phase == Phase.TransactionSigning);
+		Debug.Assert(Arena.RoundStates[0].Phase == Phase.Ended);
+		
+		Debug.Assert(Arena.Rpc.GetRawTransaction(cjTxId) is not null);
+		
+		return cjTxId;
 	}
 }

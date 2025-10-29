@@ -1,39 +1,58 @@
 using System.Collections.Immutable;
 using NBitcoin;
 using Soju.Blockchain.TransactionOutputs;
+using Soju.Helpers;
 using Soju.Wallets;
 using Soju.WabiSabi.Client.CoinJoin.Client;
 using Soju.WabiSabi.Client.CredentialDependencies;
+using Soju.WabiSabi.Client.StatusChangedEvents;
 using Soju.WabiSabi.Models;
 
 namespace Soju.WabiSabi.Client;
 
 public class CoinJoinClientContext
 {
-	public Wallet Wallet;
-	public CoinJoinConfiguration CoinJoinConfiguration;
 	public CoinJoinClient CoinJoinClient;
+	public Wallet Wallet;
 	public WalletId WalletId; // NOTE: Also a unique id for the manager
+	
 	public ImmutableArray<AliceClient> RegisteredAliceClients;
 	public ImmutableArray<TxOut> WantedOutputs;
 	public DependencyGraph Graph;
 	
 	public CoinJoinClientContext(
 		Wallet wallet,
-		CoinJoinConfiguration cjConfig)
+		CoinJoinClient cjClient)
 	{
+		CoinJoinClient = cjClient;
 		Wallet = wallet;
 		WalletId = wallet.WalletId;
-		CoinJoinConfiguration = cjConfig;
-		CoinJoinClient = null;
 	}
 	
-	public List<SmartCoin> StartRoundAndGetCoins(RoundState roundState)
+	public SmartCoin[] StartRoundAndGetCoins(RoundState roundState)
 	{
-		CoinJoinClient = new CoinJoinClient();
+		SmartCoin[] coinCandidates = new CoinsView(Wallet.GetCoinjoinCoinCandidates())
+			.Available()
+			.ToArray();
 		
-		IEnumerable<SmartCoin> coins = CoinJoinClient.StartCoinJoin(roundState, Wallet.GetCoinjoinCoinCandidates);
-		return coins.ToList();
+		if (!Wallet.BatchedPayments.AreTherePendingPayments) 
+		{
+			if (Wallet.IsWalletPrivate())
+			{
+				Wallet.LogTrace("All mixed!");
+				throw new CoinJoinClientException(CoinjoinError.AllCoinsPrivate);
+			}
+			if (coinCandidates.All(x => x.IsPrivate(Wallet.AnonScoreTarget)))
+			{
+				throw new CoinJoinClientException(
+					CoinjoinError.NoCoinsEligibleToMix,
+					$"All coin candidates are already private");
+			}
+		}
+		
+		IEnumerable<SmartCoin> coins = CoinJoinClient.StartCoinJoin(roundState, coinCandidates);
+		
+		return coins.ToArray();
 	}
 }
 

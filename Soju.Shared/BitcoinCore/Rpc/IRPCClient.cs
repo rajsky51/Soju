@@ -10,4 +10,6 @@ public interface IRPCClient
 	uint256 SendRawTransaction(Transaction transaction);
 	
 	GetTxOutResponse? GetTxOut(uint256 txid, int index);
+	
+	Transaction GetRawTransaction(uint256 txid, bool throwIfNotFound = true);
 }

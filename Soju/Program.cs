@@ -1,102 +1,131 @@
 ﻿using System.Diagnostics;
 using NBitcoin;
 using System.Reflection;
+using System.Reflection.Metadata;
 using System.Text.Json;
 using Soju;
+using Soju.BitcoinCore.Rpc;
+using Soju.Blockchain.Keys;
 using Soju.Blockchain.TransactionOutputs;
+using Soju.Blockchain.TransactionProcessing;
 using Soju.Blockchain.Transactions;
 using Soju.Crypto.Randomness;
 using Soju.Extensions;
+using Soju.Helpers;
 using Soju.Json;
 using Soju.Models;
+using Soju.WabiSabi.Backend;
 using Soju.WabiSabi.Backend.Rounds;
+using Soju.WabiSabi.Client;
 using Soju.WabiSabi.Client.CoinJoin;
 using Soju.WabiSabi.Client.CoinJoin.Client;
 using Soju.WabiSabi.Models;
 using Soju.Wallets;
 
-JsonSerializerOptions jsonOptions = new()
+string scenarioFilePath = "test_scenario.json";
+
+ScenarioParser parser = new();
+ScenarioConfig? scenario = parser.Parse(scenarioFilePath);
+foreach (string error in parser.Errors)
 {
-	AllowTrailingCommas = true,
-	RespectRequiredConstructorParameters = true,
-	WriteIndented = true
-};
-
-// NOTE: Load WabiSabiConfig
-string wabiSabiConfigFileName = "Json/Test/WabiSabiConfig.json";
-string wabiSabiConfigString = File.ReadAllText(wabiSabiConfigFileName);
-WabiSabiConfig wabiSabiConfig = JsonSerializer.Deserialize<WabiSabiConfig>(wabiSabiConfigString, jsonOptions)!;
-
-// NOTE: Load scenario
-string scenarioFileName = "Json/Test/Scenario.json";
-string scenarioString = File.ReadAllText(scenarioFileName);
-CoinjoinScenario scenario = JsonSerializer.Deserialize<CoinjoinScenario>(scenarioString, jsonOptions)!;
-
-RoundParameters roundParams = ParametersProvider.GetRoundParameters(wabiSabiConfig);
-CoinjoinSkipFactors cjSkipFactors = CoinjoinSkipFactors.NoSkip;
-ScriptType[] allowedScriptTypes = roundParams.AllowedInputTypes.Intersect(roundParams.AllowedOutputTypes).ToArray();
-
-// NOTE: Load in the chosen version (mixer and wallet constructor)
-const string pathToMixerAssembly = "/home/talar/projects/soju-experimental/Soju.Mixer.v1/bin/Debug/net9.0/Soju.Mixer.v1.dll";
-Assembly assembly = Assembly.LoadFrom(pathToMixerAssembly);
-
-IMixer mixer = (IMixer)Activator.CreateInstance(assembly.GetType("Soju.Mixer")!, roundParams)!;
-Type wallet_t = assembly.GetType("Soju.Wallets.Wallet")!;
-ConstructorInfo? walletConstructor = wallet_t.GetConstructor([typeof(string), typeof(int), typeof(Money), typeof(CoinjoinSkipFactors)]);
-Debug.Assert(walletConstructor != null);
-
-
-// NOTE: Generate wallets according to the scenario
-DumbCoinHistoryGenerator coinHistoryGenerator = new(new MoneyRange(Money.Coins(0.0002m), Money.Coins(0.1m)), roundParams.MiningFeeRate, allowedScriptTypes);
-int nWallets = scenario.Wallets.Count;
-const int newCoinHistoryDepth = 4;
-SecureRandom secureRandom = SecureRandom.Instance;
-Money liquidityClue = Money.Coins(10.0m);
-List<IWallet> wallets = new(nWallets);
-
-for (int i = 0; i < nWallets; i++)
+	Console.WriteLine($"[ERROR] {error}");
+}
+foreach (string warning in parser.Warnings)
 {
-	WalletConfig walletConfig = scenario.Wallets[i];
-	float anonScoreTarget = scenario.DefaultAnonScoreTarget;
-	if (walletConfig.AnonScoreTarget is not null) float.TryParse(walletConfig.AnonScoreTarget, out anonScoreTarget);
-	IWallet wallet = (IWallet)walletConstructor.Invoke(["wallet-" + i, (int)anonScoreTarget, liquidityClue, cjSkipFactors]);
+	Console.WriteLine($"[WARNING] {warning}");
+}
+if (scenario is null || parser.Errors.Count > 0)
+{
+	return 1;
+}
+
+Network network = Network.RegTest;
+MyRpc rpc = new(network);
+
+WabiSabiConfig wabiSabiConfig = new();
+wabiSabiConfig.MinInputCountByRoundMultiplier = 0.08;
+wabiSabiConfig.MaxInputCountByRound = 100;
+CoinJoinConfiguration cjConfig = new(
+	"foo-coordinator", 
+	Constants.DefaultMaxCoinJoinMiningFeeRate,
+	Constants.AbsoluteMinInputCount,
+	false); // NOTE: Not allowing solo coinjoining for now
+
+Dictionary<int, List<(WalletId WalletId, Money Amount)>> fundingCommands = [];
+// TODO: Hack
+for (int i = 0; i < 100; i++)
+{
+	fundingCommands[i] = [];
+}
+
+Dictionary<WalletId, CoinJoinClientManager> cjManagers = [];
+for (int i = 0; i < 20; i++)
+{	
+	ScenarioWallet scenWallet = scenario.Wallets[i];
 	
-	List<long> funds = walletConfig.Funds;
-	DumbCoin[] coins = new DumbCoin[funds.Count];
-	for (int j = 0; j < funds.Count; j++)
+	string password = $"foo{i}";
+	KeyManager keyManager = KeyManager.CreateNew(out Mnemonic _, password, network);
+	keyManager.AnonScoreTarget = scenWallet.AnonScoreTarget;
+	keyManager.RedCoinIsolation = scenWallet.RedCoinIsolation;
+	
+	AllTransactionStore txStore = new (":memory:", network);
+	TransactionProcessor txProcessor = new (txStore, keyManager, Money.Coins(Constants.DefaultDustThreshold));
+	
+	Wallet wallet = new(network, txProcessor, password);
+	CoinJoinClientManager cjManager = new(wallet, cjConfig);
+	cjManagers[wallet.WalletId] = cjManager;
+	
+	foreach (ScenarioFund fund in scenWallet.Funds)
 	{
-		DumbTransaction coinTx = new();
-		coins[j] = coinTx.AddOutputCoin(Money.Satoshis(funds[j]),
-			allowedScriptTypes.RandomElement(secureRandom), 1.0, wallet.WalletId);
-		coinHistoryGenerator.GenerateFakeHistory(coins[j], newCoinHistoryDepth);
-	}
-
-	wallet.AddCoins(coins);
-	wallets.Add(wallet);
+		var fundList = fundingCommands[fund.DelayRounds];
+		fundList.Add((wallet.WalletId, new Money(fund.Satoshis)));
+	} 
 }
 
-// NOTE: Always creating the JSON file
-StreamWriter jsonFile = new("../coinjoins.json", false); 
-JsonSerializerOptions serializerOptions = new()
+Mixer mixer = new(cjManagers.Values.ToArray(), wabiSabiConfig, rpc);
+
+int rounds = scenario.Rounds > 0 ? scenario.Rounds : Int32.MaxValue;
+for (int i = 0; i < rounds; i++)
 {
-	WriteIndented = true,
-};
-serializerOptions.Converters.Add(new DumbTransactionConverter(wallets));
-serializerOptions.Converters.Add(new CoinjoinEnumerableConverter());
-
-long nRounds = scenario.Rounds == 0 ? long.MaxValue : scenario.Rounds; // NOTE: long.MaxValue is basically infinity
-for (long i = 0; i < nRounds; i++) 
-{
-	Console.WriteLine(i);
-
-	CoinjoinResult result = mixer.CompleteMix(wallets);
-
-	List<CoinjoinResult> results = new List<CoinjoinResult>{result};
+	// TODO: Very hacky
+	int height = (i + 1) * 10_000;
 	
-	string coinjoinJson = JsonSerializer.Serialize(results, serializerOptions);
-	jsonFile.WriteLine(coinjoinJson);
+	List<(WalletId WalletId, Money Amount)> fundList;
+	if (fundingCommands.TryGetValue(i, out fundList))
+	{
+		int j = 0;
+		foreach (var fund in fundList)
+		{
+			j++;
+			Wallet wallet = cjManagers[fund.WalletId].Wallet;
+			Transaction tx = Transaction.Create(network);
+		
+			OutPoint nullOutpoint = new();
+			TxIn txInput = new(nullOutpoint, Script.Empty);
+			// TODO: This calls KeyManager's GetNextCoinJoinKeys, don't necessarily need that
+			IDestination destination = wallet.DestinationProvider.GetNextDestinations(1, false).Single();
+			TxOut txOutput = new(fund.Amount, destination.ScriptPubKey);
+		
+			tx.Inputs.Add(txInput);
+			tx.Outputs.Add(txOutput);
+		
+			rpc.SendRawTransaction(tx);
+			Debug.Assert(rpc.GetTxOut(tx.GetHash(), 0) is not null);
+		
+			SmartTransaction smartTx = new(tx, new Height(height + j));
+			wallet.TransactionProcessor.Process(smartTx);
+		}
+	}
+	
+	uint256 cjTxId = mixer.CompleteMix();
+	Transaction cjTx = rpc.GetRawTransaction(cjTxId);
+	
+	Height cjHeight = new(height + 9_000);
+	foreach (Wallet wallet in cjManagers.Values.Select(manager => manager.Wallet))
+	{
+		SmartTransaction smartTx = new SmartTransaction(cjTx, cjHeight);
+		wallet.TransactionProcessor.Process(smartTx);
+	}
 }
-
-jsonFile.Close();
 
 return 0;

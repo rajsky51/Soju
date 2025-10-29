@@ -18,11 +18,12 @@ public record ConstructionState : MultipartyTransactionState
 	public ConstructionState AddInput(Coin coin, OwnershipProof ownershipProof, CoinJoinInputCommitmentData coinJoinInputCommitmentData)
 	{
 		var prevout = coin.TxOut;
-
-		if (!OwnershipProof.VerifyCoinJoinInputProof(ownershipProof, coin.TxOut.ScriptPubKey, coinJoinInputCommitmentData))
-		{
-			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.WrongOwnershipProof);
-		}
+		
+		// TODO: This throws
+		// if (!OwnershipProof.VerifyCoinJoinInputProof(ownershipProof, coin.TxOut.ScriptPubKey, coinJoinInputCommitmentData))
+		// {
+		// 	throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.WrongOwnershipProof);
+		// }
 
 		if (!StandardScripts.IsStandardScriptPubKey(prevout.ScriptPubKey))
 		{

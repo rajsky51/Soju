@@ -774,7 +774,8 @@ public class KeyManager
 	private static HdPubKey CreateHdPubKey((KeyPath KeyPath, ExtPubKey ExtPubKey) x) =>
 		new(x.ExtPubKey.PubKey, x.KeyPath, LabelsArray.Empty, KeyState.Clean);
 
-	internal void SetExcludedCoinsFromCoinJoin(IEnumerable<OutPoint> excludedOutpoints)
+	// TODO: Originally internal not public
+	public void SetExcludedCoinsFromCoinJoin(IEnumerable<OutPoint> excludedOutpoints)
 	{
 		ExcludedCoinsFromCoinJoin = excludedOutpoints.ToList();
 		ToFile();

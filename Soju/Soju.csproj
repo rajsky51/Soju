@@ -17,7 +17,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Soju.Shared\Soju.Shared.csproj" />
     <ProjectReference Include="..\Soju.Mixer.v1\Soju.Mixer.v1.csproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <!-- TODO: Edit to false, once including multiple versions -->
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly> 
     </ProjectReference>
   </ItemGroup>
 
