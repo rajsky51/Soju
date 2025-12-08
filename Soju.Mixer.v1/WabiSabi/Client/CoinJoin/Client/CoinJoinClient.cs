@@ -272,7 +272,6 @@ public class CoinJoinClient
 		return alices;
 	}
 	
-	// TODO: Not the prettiest return values
 	public ImmutableArray<TxOut> CreateOutputs(RoundState roundState, ImmutableArray<AliceClient> registeredAliceClients)
 	{
 		Debug.Assert(roundState.Phase == Phase.OutputRegistration);
@@ -295,7 +294,6 @@ public class CoinJoinClient
 		return outputTxOuts;
 	}
 	
-	// TODO: hack
 	public OutputRegistrationRequest[] CreateOutputRegistrationRequests(RoundState roundState, IList<TxOut> outputs)
 	{
 		OutputRegistrationRequest[] requests = new OutputRegistrationRequest[outputs.Count];

@@ -1,6 +1,5 @@
 using System.Text.Json;
 using NBitcoin;
-using Soju.Blockchain.Keys;
 
 namespace Soju;
 
@@ -23,8 +22,14 @@ public class ScenarioParser
 	public List<string> Warnings;
 	public List<string> Errors;
 	
-	public ScenarioParser()
+	public int DefaultAnonScoreTarget;
+	public bool DefaultRedCoinIsolation;
+	
+	public ScenarioParser(int defaultAnonScoreTarget, bool defaultRedCoinIsolation)
 	{
+		DefaultAnonScoreTarget = defaultAnonScoreTarget;
+		DefaultRedCoinIsolation = defaultRedCoinIsolation;
+		
 		Warnings = [];
 		Errors = [];
 	}
@@ -44,8 +49,8 @@ public class ScenarioParser
 		string name = GetString(root, "name", "unknown", Requirement.OptionalWarning, "root");
 		int blocks = (int)GetLong(root, "blocks", 0, Requirement.OptionalWarning, "root");
 		int rounds = (int)GetLong(root, "rounds", 0, Requirement.OptionalWarning, "root");
-		int defaultAnonScoreTarget = (int)GetLong(root, "default_anon_score_target", KeyManager.DefaultAnonScoreTarget, Requirement.OptionalWarning, "root");
-		bool defaultRedcoinIsolation = GetBool(root, "default_redcoin_isolation", KeyManager.DefaultRedCoinIsolation, Requirement.OptionalWarning, "root");
+		int defaultAnonScoreTarget = (int)GetLong(root, "default_anon_score_target", DefaultAnonScoreTarget, Requirement.OptionalWarning, "root");
+		bool defaultRedcoinIsolation = GetBool(root, "default_redcoin_isolation", DefaultRedCoinIsolation, Requirement.OptionalWarning, "root");
 		
 		ScenarioBackend? backend = new ScenarioBackend(null, null, null, null, null);
 		if (root.TryGetProperty("backend", out JsonElement backendElement) && backendElement.ValueKind == JsonValueKind.Object) 

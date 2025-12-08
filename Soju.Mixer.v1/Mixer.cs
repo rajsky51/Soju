@@ -27,7 +27,7 @@ using WabiSabi.Crypto.Randomness;
 
 namespace Soju;
 
-public class  Mixer : IMixer
+public class  Mixer
 {
 	public Arena Arena;
 	public CoinJoinClientManager[] CJManagers;
@@ -234,7 +234,7 @@ public class  Mixer : IMixer
 			}
 		}
 		sw.Stop();
-		Console.WriteLine($"Client signing transations took {sw.ElapsedMilliseconds} ms");
+		Console.WriteLine($"Clients signing transation took {sw.ElapsedMilliseconds} ms");
 		
 		TransactionSignaturesRequest[] sigRequests = sigRequestBag.ToArray();
 		
