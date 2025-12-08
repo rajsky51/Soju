@@ -6,6 +6,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Soju.BitcoinCore.Rpc;
 using Soju.Blockchain.Analysis;
+using Soju.Blockchain.Keys;
 using Soju.Blockchain.TransactionOutputs;
 using Soju.Blockchain.Transactions;
 using Soju.Helpers;
@@ -13,6 +14,7 @@ using Soju.WabiSabi.Backend.PostRequests;
 using Soju.Extensions;
 using Soju.Logging;
 using Soju.WabiSabi.Backend;
+using Soju.WabiSabi.Backend.Models;
 using Soju.WabiSabi.Backend.Rounds;
 using Soju.WabiSabi.Backend.Statistics;
 using Soju.WabiSabi.Client;
@@ -29,6 +31,7 @@ public class  Mixer : IMixer
 {
 	public Arena Arena;
 	public CoinJoinClientManager[] CJManagers;
+	public WabiSabiConfig ConfigCheck;
 
 	public Mixer(
 		CoinJoinClientManager[] cjManagers, 
@@ -38,6 +41,7 @@ public class  Mixer : IMixer
 	{
 		Arena = new Arena(config, rpc, new RoundParameterFactory(config, rpc.Network));
 		CJManagers = cjManagers;
+		ConfigCheck = config;
 	}
 
 	public uint256 CompleteMix()
@@ -63,21 +67,14 @@ public class  Mixer : IMixer
 		
 		ConcurrentBag<(WalletId WalletId, List<InputRegistrationRequestWithId> Requests)> inputRequestBag = [];
 		
-		long coinSelectionSumMs = 0;
-		long inputReqCreationSumMs = 0;
+		Stopwatch sw = Stopwatch.StartNew();
 		Parallel.ForEach(cjCtxs.Values, cjCtx =>
 		{
 			try 
 			{
-				Stopwatch sw = Stopwatch.StartNew();
 				IEnumerable<SmartCoin> coins = cjCtx.StartRoundAndGetCoins(roundState);
-				sw.Stop();
-				Interlocked.Add(ref coinSelectionSumMs, sw.ElapsedMilliseconds);
 				
-				sw.Restart();
 				List<InputRegistrationRequestWithId> requests = cjCtx.CoinJoinClient.CreateInputRegistrationRequests(coins, roundState);
-				sw.Stop();
-				Interlocked.Add(ref inputReqCreationSumMs, sw.ElapsedMilliseconds);
 				
 				inputRequestBag.Add((cjCtx.WalletId, requests));
 			} 
@@ -85,10 +82,9 @@ public class  Mixer : IMixer
 			{
 				Logger.LogWarning(ex);
 			}
-			
 		});
-		Console.WriteLine($"Choosing inputs coins took {coinSelectionSumMs} ms");
-		Console.WriteLine($"Then creating input reg requests took {inputReqCreationSumMs} ms");
+		sw.Stop();
+		Console.WriteLine($"Creating input reg requests took {sw.ElapsedMilliseconds} ms");
 		
 		(WalletId WalletId, InputRegistrationRequestWithId RequestWithId)[] inputRequestsWithWalletIds = 
 			inputRequestBag
@@ -107,9 +103,18 @@ public class  Mixer : IMixer
 			WalletId walletId = requestWithWalletId.WalletId;
 			InputRegistrationRequestWithId requestWithid = requestWithWalletId.RequestWithId;
 			
-			InputRegistrationResponse response = Arena.RegisterInput(requestWithid.Request);
-			InputRegistrationResponseWithId responseWithId = new InputRegistrationResponseWithId(response, requestWithid.Id);
-			inputRegResponses[walletId].Add(responseWithId);
+			try {
+				InputRegistrationResponse response = Arena.RegisterInput(requestWithid.Request);
+				InputRegistrationResponseWithId responseWithId = new InputRegistrationResponseWithId(response, requestWithid.Id);
+				inputRegResponses[walletId].Add(responseWithId);
+			}
+			catch (WrongPhaseException wpEx)
+			{
+				// NOTE: This happens when reaching max input count. We'll just not emit any responses
+				Debug.Assert(Arena.Rounds.Count == 1);
+				Round round = Arena.Rounds.First();
+				Debug.Assert(round.InputCount == ConfigCheck.MaxInputCountByRound);
+			}
 		}
 		
 		ConcurrentDictionary<WalletId, List<AliceClient>> aliceClientsNeedToConfirm = [];
@@ -128,17 +133,15 @@ public class  Mixer : IMixer
 		
 		ConcurrentBag<(WalletId WalletId, List<ConnectionConfirmationRequestWithId> Requests)> ccRequestBag = [];
 		
-		long ccReqCreationSumMs = 0;
+		sw.Restart();
 		Parallel.ForEach(cjCtxs.Values, cjCtx =>
 		{
-			Stopwatch sw = Stopwatch.StartNew();
 			List<ConnectionConfirmationRequestWithId> requests =  cjCtx.CoinJoinClient.CreateConnectionConfirmationRequests(aliceClientsNeedToConfirm[cjCtx.WalletId]);
-			sw.Stop();
-			Interlocked.Add(ref ccReqCreationSumMs, sw.ElapsedMilliseconds);
 			
 			ccRequestBag.Add((cjCtx.WalletId, requests));
 		});
-		Console.WriteLine($"Creating connection confirmation requests took {ccReqCreationSumMs} ms");
+		sw.Stop();
+		Console.WriteLine($"Creating connection confirmation requests took {sw.ElapsedMilliseconds} ms");
 		
 		(WalletId WalletId, ConnectionConfirmationRequestWithId RequestWithId)[] ccRequestsWithWalletIds = 
 			ccRequestBag
@@ -175,13 +178,14 @@ public class  Mixer : IMixer
 		roundState = Arena.RoundStates[0];
 		Debug.Assert(roundState.Phase == Phase.OutputRegistration);
 		
+		sw.Restart();
 		foreach (CoinJoinClientContext cjCtx in cjCtxs.Values)
 		{
 			ImmutableArray<AliceClient> regAliceClients = cjCtx.RegisteredAliceClients;
 			
 			try 
 			{
-				(cjCtx.WantedOutputs, cjCtx.Graph) = cjCtx.CoinJoinClient.CreateOutputsAndDependencyGraph(roundState, regAliceClients);
+				cjCtx.WantedOutputs = cjCtx.CoinJoinClient.CreateOutputs(roundState, regAliceClients);
 			}
 			catch (Exception ex)
 			{
@@ -189,8 +193,8 @@ public class  Mixer : IMixer
 				Logger.LogWarning(ex);
 			}
 		}
-		
-		// TODO: Resolve dependency graph
+		sw.Stop();
+		Console.WriteLine($"Choosing outputs took {sw.ElapsedMilliseconds} ms");
 		
 		List<OutputRegistrationRequest> outputRegRequests = [];
 		// NOTE: Output registration
@@ -199,7 +203,9 @@ public class  Mixer : IMixer
 			OutputRegistrationRequest[] requests = cjCtx.CoinJoinClient.CreateOutputRegistrationRequests(roundState, cjCtx.WantedOutputs);
 			outputRegRequests.AddRange(requests);
 		}
+		
 		outputRegRequests.Shuffle(wrnd);
+		
 		
 		foreach (OutputRegistrationRequest request in outputRegRequests)
 		{
@@ -214,6 +220,7 @@ public class  Mixer : IMixer
 		
 		ConcurrentBag<TransactionSignaturesRequest> sigRequestBag = []; 
 		
+		sw.Restart();
 		foreach (CoinJoinClientContext cjCtx in cjCtxs.Values)
 		{
 			ImmutableArray<AliceClient> regAliceClients = cjCtx.RegisteredAliceClients;
@@ -226,6 +233,8 @@ public class  Mixer : IMixer
 				sigRequestBag.Add(request);
 			}
 		}
+		sw.Stop();
+		Console.WriteLine($"Client signing transations took {sw.ElapsedMilliseconds} ms");
 		
 		TransactionSignaturesRequest[] sigRequests = sigRequestBag.ToArray();
 		
@@ -238,7 +247,20 @@ public class  Mixer : IMixer
 		Arena.SetRoundStates();
 		Debug.Assert(Arena.RoundStates[0].Phase == Phase.Ended);
 		
-		Debug.Assert(Arena.Rpc.GetRawTransaction(cjTxId) is not null);
+		Transaction cjTx = Arena.Rpc.GetRawTransaction(cjTxId);
+		int totalRegAlices = cjCtxs.Sum(kvp => kvp.Value.RegisteredAliceClients.Count());
+		int totalWantedOutputs = cjCtxs.Sum(kvp => kvp.Value.WantedOutputs.Count());
+		Debug.Assert(cjTx.Inputs.Count() == totalRegAlices);
+		Debug.Assert(cjTx.Outputs.Count() - totalWantedOutputs <= 1);
+		
+		foreach (CoinJoinClientContext cjCtx in cjCtxs.Values)
+		{
+			Wallet wallet = cjCtx.Wallet;
+			wallet.BatchedPayments.MovePaymentsToFinished(cjTxId);
+			wallet.OutputProvider.DestinationProvider.TrySetScriptStates(KeyState.Used, cjCtx.WantedOutputs.Select(txOut => txOut.ScriptPubKey));
+			// NOTE: This moves the rest
+			wallet.BatchedPayments.MovePaymentsToPending();
+		}
 		
 		return cjTxId;
 	}

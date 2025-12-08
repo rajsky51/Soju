@@ -18,8 +18,4 @@
         <ProjectReference Include="..\Soju.Shared\Soju.Shared.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Blockchain\Keys\" />
-    </ItemGroup>
-
 </Project>

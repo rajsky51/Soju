@@ -235,15 +235,17 @@ public class KeyManager
 	private HdPubKeyGenerator? TaprootExternalKeyGenerator { get; set; }
 	private readonly HdPubKeyGenerator? _taprootInternalKeyGenerator;
 
-	public string WalletName => string.IsNullOrWhiteSpace(FilePath) ? "" : Path.GetFileNameWithoutExtension(FilePath);
-
-	public static KeyManager CreateNew(out Mnemonic mnemonic, string password, Network network, string? filePath = null)
+	// public string WalletName => string.IsNullOrWhiteSpace(FilePath) ? "" : Path.GetFileNameWithoutExtension(FilePath);
+	public string WalletName;
+	
+	public static KeyManager CreateNew(out Mnemonic mnemonic, string password, Network network, string walletName, string? filePath = null)
 	{
 		mnemonic = new Mnemonic(Wordlist.English, WordCount.Twelve);
-		return CreateNew(mnemonic, password, network, filePath);
+		Console.WriteLine($"Mnemonic finish '{walletName}'"); // DEBUG
+		return CreateNew(mnemonic, password, network, walletName, filePath);
 	}
 
-	public static KeyManager CreateNew(Mnemonic mnemonic, string password, Network network, string? filePath = null)
+	public static KeyManager CreateNew(Mnemonic mnemonic, string password, Network network, string walletName, string? filePath = null)
 	{
 		password ??= "";
 
@@ -258,7 +260,11 @@ public class KeyManager
 		KeyPath taprootAccountKeyPath = GetAccountKeyPath(network, ScriptPubKeyType.TaprootBIP86);
 		ExtPubKey taprootExtPubKey = extKey.Derive(taprootAccountKeyPath).Neuter();
 
-		return new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, segwitExtPubKey, taprootExtPubKey, AbsoluteMinGapLimit, blockchainState, filePath, segwitAccountKeyPath, taprootAccountKeyPath);
+		KeyManager km =  new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, segwitExtPubKey, taprootExtPubKey, AbsoluteMinGapLimit, blockchainState, filePath, segwitAccountKeyPath, taprootAccountKeyPath);
+		// TODO: Crude addition. Maybe use the file path original code, but that requires actually creating a 
+		// directory for it
+		km.WalletName = walletName;
+		return km;
 	}
 
 	public static KeyManager CreateNewWatchOnly(ExtPubKey segwitExtPubKey, ExtPubKey taprootExtPubKey, string? filePath = null, int? minGapLimit = null)
@@ -774,7 +780,7 @@ public class KeyManager
 	private static HdPubKey CreateHdPubKey((KeyPath KeyPath, ExtPubKey ExtPubKey) x) =>
 		new(x.ExtPubKey.PubKey, x.KeyPath, LabelsArray.Empty, KeyState.Clean);
 
-	// TODO: Originally internal not public
+	// NOTE: Originally internal not public
 	public void SetExcludedCoinsFromCoinJoin(IEnumerable<OutPoint> excludedOutpoints)
 	{
 		ExcludedCoinsFromCoinJoin = excludedOutpoints.ToList();

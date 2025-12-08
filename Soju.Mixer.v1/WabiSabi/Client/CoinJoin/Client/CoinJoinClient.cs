@@ -173,34 +173,16 @@ public class CoinJoinClient
 		foreach (SmartCoin coin in smartCoins) 
 		{
 			try 
-			{
-				ArenaClient aliceArenaClient = new ArenaClient(
-					roundState.CreateAmountCredentialClient(_secureRandom),
-					roundState.CreateVsizeCredentialClient(_secureRandom),
-					_coinJoinConfiguration.CoordinatorIdentifier);
-				
-				OwnershipProof ownershipProof = _keyChain.GetOwnershipProof(
-					coin,
-					new CoinJoinInputCommitmentData(aliceArenaClient.CoordinatorIdentifier, roundState.Id));
-				
-				ZeroCredentialsRequestData zeroAmountCredentialRequestData = aliceArenaClient.AmountCredentialClient.CreateRequestForZeroAmount();
-				ZeroCredentialsRequestData zeroVsizeCredentialRequestData = aliceArenaClient.VsizeCredentialClient.CreateRequestForZeroAmount();
-				
+			{	
 				InputRegistrationRequest request = new (
 					roundState.Id,
-					coin.Coin.Outpoint,
-					ownershipProof,
-					zeroAmountCredentialRequestData.CredentialsRequest,
-					zeroVsizeCredentialRequestData.CredentialsRequest);
+					coin.Coin.Outpoint);
 				
 				Guid requestGuid = Guid.NewGuid();
 				this.PendingInputRegistrationRequests[requestGuid] = new InputRegistrationRequestData(
 					Request: request,
-					Client: aliceArenaClient,
 					RoundState: roundState,
-					Coin: coin,
-					ZeroAmountCredsRequest: zeroAmountCredentialRequestData,
-					ZeroVsizeCredsRequest: zeroVsizeCredentialRequestData); 
+					Coin: coin); 
 				
 				requests.Add(new InputRegistrationRequestWithId(Request: request, Id: requestGuid));
 			}
@@ -219,19 +201,8 @@ public class CoinJoinClient
 		foreach ((InputRegistrationResponse response, Guid id) in responses)
 		{
 			InputRegistrationRequestData requestData = this.PendingInputRegistrationRequests[id];
-			ArenaClient arenaClient = requestData.Client;
 			
-			IEnumerable<Credential>? realAmountCredentials = arenaClient.AmountCredentialClient.HandleResponse(
-																response.AmountCredentials, 
-																requestData.ZeroAmountCredsRequest.CredentialsResponseValidation);
-			IEnumerable<Credential>? realVsizeCredentials = arenaClient.VsizeCredentialClient.HandleResponse(
-																response.VsizeCredentials, 
-																requestData.ZeroVsizeCredsRequest.CredentialsResponseValidation);
-			
-			// NOTE: We could directly input the data into AliceClient, but let's go through ArenaResponse's constructor
-			ArenaResponse<Guid> arenaResponse = new(response.AliceId, realAmountCredentials, realVsizeCredentials);
-			AliceClient aliceClient = new(arenaResponse.Value, requestData.RoundState, arenaClient, requestData.Coin, 
-				arenaResponse.IssuedAmountCredentials, arenaResponse.IssuedVsizeCredentials);
+			AliceClient aliceClient = new(response.AliceId, requestData.RoundState, requestData.Coin);
 			requestData.Coin.CoinJoinInProgress = true;
 			
 			Logger.LogInfo($"Round ({requestData.RoundState.Id}), Alice ({aliceClient.AliceId}): Registered {requestData.Coin.Outpoint}.");
@@ -242,12 +213,16 @@ public class CoinJoinClient
 		
 		// NOTE: The successful requests were already removed in the loop
 		List<SmartCoin> notRegisteredCoins = this.PendingInputRegistrationRequests.Values.Select(requestData => requestData.Coin).ToList();
+		foreach (SmartCoin coin in notRegisteredCoins)
+		{
+			coin.CoinJoinInProgress = false;
+		}
 		this.PendingInputRegistrationRequests.Clear();
 		
 		return new InputRegistrationResponseHandlingResult(alices, notRegisteredCoins);
 	}
 	
-	public record ConnectionConfirmationRequestData(ConnectionConfirmationRequest Request, AliceClient AliceClient, ZeroCredentialsRequestData ZeroAmountCredsRequest, ZeroCredentialsRequestData ZeroVsizeCredsRequest, RealCredentialsRequestData RealAmountCredsRequest, RealCredentialsRequestData RealVsizeCredsRequest);
+	public record ConnectionConfirmationRequestData(ConnectionConfirmationRequest Request, AliceClient AliceClient, long RealAmountCredsRequest, long RealVsizeCredsRequest);
 	
 	// TODO: Why do we need alices as a parameter? Wouldn't it be better to just store alices?
 	public List<ConnectionConfirmationRequestWithId> CreateConnectionConfirmationRequests(List<AliceClient> alices)
@@ -255,55 +230,24 @@ public class CoinJoinClient
 		List<ConnectionConfirmationRequestWithId> requests = [];
 		foreach (AliceClient alice in alices)
 		{
-			long[] amountsToRequest = { alice.EffectiveValue.Satoshi };
-			long[] vsizesToRequest = { alice.MaxVsizeAllocationPerAlice - alice.SmartCoin.ScriptPubKey.EstimateInputVsize() };
+			long amountToRequest = alice.EffectiveValue.Satoshi;
+			long vsizeToRequest = alice.MaxVsizeAllocationPerAlice - alice.SmartCoin.ScriptPubKey.EstimateInputVsize();
 			
 			uint256 roundId = alice.RoundId;
 			Guid aliceId = alice.AliceId;
-			IEnumerable<Credential> amountCredentialsToPresent = alice.IssuedAmountCredentials;
-			IEnumerable<Credential> vsizeCredentialsToPresent = alice.IssuedVsizeCredentials;
-			ArenaClient arenaClient = alice.ArenaClient;
-			
-			Guard.InRange(nameof(amountsToRequest), amountsToRequest, 1, ProtocolConstants.CredentialNumber);
-			Guard.InRange(nameof(amountCredentialsToPresent), amountCredentialsToPresent, 0, ProtocolConstants.CredentialNumber);
-			Guard.InRange(nameof(vsizeCredentialsToPresent), vsizeCredentialsToPresent, 0, ProtocolConstants.CredentialNumber);
-			Guard.InRange(nameof(vsizesToRequest), vsizesToRequest, 1, arenaClient.VsizeCredentialClient.NumberOfCredentials);
-			
-			// TODO: We are creating a new cancellation token just to satisfy the API. This
-			// shouldn't matter, because CreateRequest just calls InternalCreateRequest,
-			// which is synchronous and doesn't use cancellationToken in any way. However,
-			// it would be good to look into if we should use WabiSabi statically.
-			CancellationToken fakeCancellationToken = new();
-			
-			RealCredentialsRequestData realAmountCredentialRequestData = arenaClient.AmountCredentialClient.CreateRequest(
-				amountsToRequest,
-				amountCredentialsToPresent,
-				fakeCancellationToken);
-			
-			RealCredentialsRequestData realVsizeCredentialRequestData = arenaClient.VsizeCredentialClient.CreateRequest(
-				vsizesToRequest,
-				vsizeCredentialsToPresent,
-				fakeCancellationToken);
-			
-			ZeroCredentialsRequestData zeroAmountCredentialRequestData = arenaClient.AmountCredentialClient.CreateRequestForZeroAmount();
-			ZeroCredentialsRequestData zeroVsizeCredentialRequestData = arenaClient.VsizeCredentialClient.CreateRequestForZeroAmount();
 			
 			ConnectionConfirmationRequest request = new (
-				roundId,
-				aliceId,
-				zeroAmountCredentialRequestData.CredentialsRequest,
-				realAmountCredentialRequestData.CredentialsRequest,
-				zeroVsizeCredentialRequestData.CredentialsRequest,
-				realVsizeCredentialRequestData.CredentialsRequest);
+				RoundId: roundId,
+				AliceId: aliceId,
+				RealAmountCredentialRequestDelta: amountToRequest,
+				RealVsizeCredentialRequestDelta: vsizeToRequest);
 			
 			Guid requestGuid = Guid.NewGuid();
 			this.PendingConnectionConfirmationRequests[requestGuid] = new ConnectionConfirmationRequestData(
 				Request: request,
 				AliceClient: alice,
-				zeroAmountCredentialRequestData,
-				zeroVsizeCredentialRequestData,
-				realAmountCredentialRequestData,
-				realVsizeCredentialRequestData);
+				RealAmountCredsRequest: amountToRequest,
+				RealVsizeCredsRequest: vsizeToRequest);
 			requests.Add(new ConnectionConfirmationRequestWithId(request, requestGuid));
 		}
 		return requests;
@@ -313,60 +257,32 @@ public class CoinJoinClient
 	{
 		List<AliceClient> alices = [];
 		
-		// AliceClient[] alices = new AliceClient[responses.Count];
-		
 		foreach ((ConnectionConfirmationResponse response, Guid id) in responses)
 		{
 			ConnectionConfirmationRequestData requestData = this.PendingConnectionConfirmationRequests[id];
 			
-			ArenaClient arenaClient = requestData.AliceClient.ArenaClient;
-			
-			IEnumerable<Credential> zeroAmountCredentials = arenaClient.AmountCredentialClient.HandleResponse(
-				response.ZeroAmountCredentials, 
-				requestData.ZeroAmountCredsRequest.CredentialsResponseValidation);
-			IEnumerable<Credential> zeroVsizeCredentials = arenaClient.VsizeCredentialClient.HandleResponse(
-				response.ZeroVsizeCredentials, 
-				requestData.ZeroVsizeCredsRequest.CredentialsResponseValidation);
-			
-			ArenaResponse<bool> arenaResponse;
-			if (response is {RealAmountCredentials: {}, RealVsizeCredentials: {}})
-			{
-				var realAmountCredentials = arenaClient.AmountCredentialClient.HandleResponse(
-					response.RealAmountCredentials,
-					requestData.RealAmountCredsRequest.CredentialsResponseValidation);
-				var realVsizeCredentials = arenaClient.VsizeCredentialClient.HandleResponse(
-					response.RealVsizeCredentials, 
-					requestData.RealVsizeCredsRequest.CredentialsResponseValidation);
-				arenaResponse = new(true, realAmountCredentials, realVsizeCredentials);
-			} else {
-				arenaResponse = new(false, zeroAmountCredentials, zeroVsizeCredentials);
-			}
-			
 			AliceClient aliceClient = requestData.AliceClient;
-			aliceClient.IssuedAmountCredentials = arenaResponse.IssuedAmountCredentials;
-			aliceClient.IssuedVsizeCredentials = arenaResponse.IssuedVsizeCredentials;
+			aliceClient.RealAmountCredentialsValue = response.RealAmountCredentials;
+			aliceClient.RealVsizeCredentialsValue = response.RealVsizeCredentials;
 			
-			// TODO: Catch WabiSabiProtocolExceptions
-			// TODO: Differentiate between pending and zerocredentials, plus somehow measure it
 			alices.Add(aliceClient);
 			PendingConnectionConfirmationRequests.Remove(id);
 		}
-		PendingConnectionConfirmationRequests.Clear();
+		Debug.Assert(!PendingConnectionConfirmationRequests.Any());
 		return alices;
 	}
 	
-	// NOTE: Done like this, because both output and dependency graph calculations can take 
-	// some time and we can do that in parallel with other clients. Then later we need to 
-	// create reissuance according to the graph, but that is a lot more back and forth.
 	// TODO: Not the prettiest return values
-	public (ImmutableArray<TxOut>, DependencyGraph) CreateOutputsAndDependencyGraph(RoundState roundState, ImmutableArray<AliceClient> registeredAliceClients)
+	public ImmutableArray<TxOut> CreateOutputs(RoundState roundState, ImmutableArray<AliceClient> registeredAliceClients)
 	{
 		Debug.Assert(roundState.Phase == Phase.OutputRegistration);
 		
 		RoundParameters roundParameters = roundState.CoinjoinState.Parameters;
 		
 		IEnumerable<Coin> registeredCoins = registeredAliceClients.Select(alice => alice.SmartCoin.Coin);
-		IEnumerable<long> availableVsizes = registeredAliceClients.SelectMany(alice => alice.IssuedVsizeCredentials.Where(cred => cred.Value > 0)).Select(cread => cread.Value);
+		
+		List<long> availableVsizes = registeredAliceClients.Select(alice => alice.RealVsizeCredentialsValue).ToList();
+		foreach (long vsize in availableVsizes) Debug.Assert(vsize > 0);
 		
 		ConstructionState constructionState = roundState.Assert<ConstructionState>();
 		
@@ -376,18 +292,10 @@ public class CoinJoinClient
 		
 		ImmutableArray<TxOut> outputTxOuts = _outputProvider.GetOutputs(roundState.Id, roundParameters, registeredCoinEffectiveValues, theirCoinEffectiveValues, (int)availableVsizes.Sum()).ToImmutableArray();
 		
-		DependencyGraph dependencyGraph = DependencyGraph.ResolveCredentialDependencies(
-			registeredCoinEffectiveValues, 
-			outputTxOuts, 
-			roundParameters.MiningFeeRate, 
-			availableVsizes, 
-			roundParameters.MaxAmountCredentialValue, 
-			roundParameters.MaxVsizeCredentialValue);
-		
-		return (outputTxOuts, dependencyGraph);
+		return outputTxOuts;
 	}
 	
-	// TODO: IMPORTANT: hack
+	// TODO: hack
 	public OutputRegistrationRequest[] CreateOutputRegistrationRequests(RoundState roundState, IList<TxOut> outputs)
 	{
 		OutputRegistrationRequest[] requests = new OutputRegistrationRequest[outputs.Count];
@@ -465,8 +373,7 @@ public class CoinJoinClient
 }
 
 // NOTE: Record to use when handling input registration response
-public record InputRegistrationRequestData(InputRegistrationRequest Request, ArenaClient Client, RoundState RoundState, 
-	SmartCoin Coin, ZeroCredentialsRequestData ZeroAmountCredsRequest, ZeroCredentialsRequestData ZeroVsizeCredsRequest);
+public record InputRegistrationRequestData(InputRegistrationRequest Request, RoundState RoundState, SmartCoin Coin);
 	
 // TODO: This doesn't need to be Guid; it only needs to be unique for this CoinJoinClient
 public record InputRegistrationRequestWithId(InputRegistrationRequest Request, Guid Id);

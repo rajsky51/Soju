@@ -20,25 +20,20 @@ public static class RPCClientExtensions
 		};
 	}
 	
-	private static EstimateSmartFeeResponse SimulateRegTestFeeEstimation(int confirmationTarget)
+	private static EstimateSmartFeeResponse SimulateRegTestFeeEstimation(this IRPCClient rpc, int confirmationTarget)
 	{
-		// TODO: Hack; We should be able to calculate this based on feeRate given in scenario
-		// int satoshiPerByte = (Constants.SevenDaysConfirmationTarget + 1 + 6 - confirmationTarget) / 7;
-		int satoshiPerByte = 2;
-		Money feePerK = Money.Satoshis(satoshiPerByte * 1000);
-		FeeRate feeRate = new(feePerK);
-		var resp = new EstimateSmartFeeResponse { Blocks = confirmationTarget, FeeRate = feeRate };
+		var resp = new EstimateSmartFeeResponse {Blocks = confirmationTarget, FeeRate = rpc.GetCurrentMiningFeeRate()};
 		return resp;
 	}
 	
-	private static FeeRateByConfirmationTarget SimulateRegTestFeeEstimation() =>
+	private static FeeRateByConfirmationTarget SimulateRegTestFeeEstimation(this IRPCClient rpc) =>
 		Constants.ConfirmationTargets
-		.Select(target => SimulateRegTestFeeEstimation(target))
+		.Select(target => rpc.SimulateRegTestFeeEstimation(target))
 		.ToDictionary(x => x.Blocks, x => (int)Math.Ceiling(x.FeeRate.SatoshiPerByte));
 	
 	public static AllFeeEstimate EstimateAllFee(this IRPCClient rpc)
 	{
 		Debug.Assert(rpc.Network == Network.RegTest);
-		return new AllFeeEstimate(SimulateRegTestFeeEstimation());
+		return new AllFeeEstimate(rpc.SimulateRegTestFeeEstimation());
 	}
 }

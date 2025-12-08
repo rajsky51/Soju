@@ -11,12 +11,15 @@ public class MyRpc : IRPCClient
 	// NOTE: For now we only need to know the transactions, we don't need the number
 	// of confirmations or anything else
 	public Dictionary<uint256, Transaction> Transactions;
+	public FeeRate CurrentMiningFeeRate;
 	
 	public MyRpc (Network network)
 	{
 		Debug.Assert(network == Network.RegTest);
 		Network = network;
 		Transactions = new();
+		// NOTE: Absurdly big value, cannot be decimal.MaxValue
+		CurrentMiningFeeRate = new FeeRate(1_000_000m); 
 	}
 	
 	public uint256 SendRawTransaction(Transaction transaction)
@@ -58,6 +61,16 @@ public class MyRpc : IRPCClient
 		}
 		Debug.Assert(false, "Queried for a non-existing transaction");
 		return tx; // NOTE: Satisfying the compiler
+	}
+	
+	public FeeRate GetCurrentMiningFeeRate()
+	{
+		return CurrentMiningFeeRate;
+	}
+	
+	public void SetCurrentMiningFeeRate(FeeRate feeRate)
+	{
+		CurrentMiningFeeRate = feeRate;
 	}
 }
 

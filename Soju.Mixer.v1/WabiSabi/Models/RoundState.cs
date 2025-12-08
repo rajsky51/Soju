@@ -64,10 +64,4 @@ public record RoundState(uint256 Id,
 			TState s => s,
 			_ => throw new InvalidOperationException($"{typeof(TState).Name} state was expected but {CoinjoinState.GetType().Name} state was received.")
 		};
-
-	public WabiSabiClient CreateAmountCredentialClient(WasabiRandom random) =>
-		new(AmountCredentialIssuerParameters, random, CoinjoinState.Parameters.MaxAmountCredentialValue);
-
-	public WabiSabiClient CreateVsizeCredentialClient(WasabiRandom random) =>
-		new(VsizeCredentialIssuerParameters, random, CoinjoinState.Parameters.MaxVsizeCredentialValue);
 }

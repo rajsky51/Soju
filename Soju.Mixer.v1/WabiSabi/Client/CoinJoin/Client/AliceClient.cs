@@ -20,29 +20,22 @@ public class AliceClient
 	public AliceClient(
 		Guid aliceId,
 		RoundState roundState,
-		ArenaClient arenaClient,
-		SmartCoin coin,
-		IEnumerable<Credential> issuedAmountCredentials,
-		IEnumerable<Credential> issuedVsizeCredentials)
+		SmartCoin coin)
 	{
 		var roundParameters = roundState.CoinjoinState.Parameters;
 		AliceId = aliceId;
 		RoundId = roundState.Id;
-		ArenaClient = arenaClient;
 		SmartCoin = coin;
 		FeeRate = roundParameters.MiningFeeRate;
-		IssuedAmountCredentials = issuedAmountCredentials;
-		IssuedVsizeCredentials = issuedVsizeCredentials;
 		MaxVsizeAllocationPerAlice = roundParameters.MaxVsizeAllocationPerAlice;
 	}
 
 	public Guid AliceId { get; }
 	public uint256 RoundId { get; }
-	public readonly ArenaClient ArenaClient;
 	public SmartCoin SmartCoin { get; }
 	public readonly FeeRate FeeRate;
-	public IEnumerable<Credential> IssuedAmountCredentials { get; set; }
-	public IEnumerable<Credential> IssuedVsizeCredentials { get; set; }
+	public long RealAmountCredentialsValue { get; set; }
+	public long RealVsizeCredentialsValue { get; set; }
 	public readonly long MaxVsizeAllocationPerAlice;
 
 	public Money EffectiveValue => SmartCoin.EffectiveValue(FeeRate);

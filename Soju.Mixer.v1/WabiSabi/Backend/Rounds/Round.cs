@@ -116,8 +116,8 @@ public class Round
 		return false;
 	}
 
-	public ConstructionState AddInput(Coin coin, OwnershipProof ownershipProof, CoinJoinInputCommitmentData coinJoinInputCommitmentData)
-		=> Assert<ConstructionState>().AddInput(coin, ownershipProof, coinJoinInputCommitmentData);
+	public ConstructionState AddInput(Coin coin)
+		=> Assert<ConstructionState>().AddInput(coin);
 
 	public ConstructionState AddOutput(TxOut output)
 		=> Assert<ConstructionState>().AddOutput(output);

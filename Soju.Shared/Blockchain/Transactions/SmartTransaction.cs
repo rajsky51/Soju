@@ -66,7 +66,6 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 	#region Members
 	
 	public long[] OutputValues => _outputValues.Value;
-	// TODO: Why isn't this just in the analyzer?
 	public bool IsWasabi2Cj => _isWasabi2Cj.Value;
 
 	/// <summary>Coins those are on the input side of the tx and belong to ANY loaded wallet. Later if more wallets are loaded this list can increase.</summary>

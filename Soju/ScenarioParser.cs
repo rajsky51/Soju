@@ -4,8 +4,9 @@ using Soju.Blockchain.Keys;
 
 namespace Soju;
 
-// TODO: satoshis -> int64
-public record ScenarioFund(int Satoshis, int DelayRounds);
+public record ScenarioFund(long Satoshis, int DelayRounds);
+public record ScenarioPayment(long Satoshis, int SenderWalletIx, int ReceiverWalletIx, int DelayRounds);
+public record ScenarioMiningFee(decimal SatoshisPerByte, int DelayRounds);
 public record ScenarioWallet(List<ScenarioFund> Funds, int AnonScoreTarget, bool RedCoinIsolation, int StopRounds);
 public record ScenarioBackend
 (
@@ -15,7 +16,7 @@ public record ScenarioBackend
 	Money?  MinRegistrableAmount,
 	Money?  MaxRegistrableAmount
 );
-public record ScenarioConfig(ScenarioBackend Backend, List<ScenarioWallet> Wallets, string Name, int Rounds);
+public record ScenarioConfig(ScenarioBackend Backend, List<ScenarioWallet> Wallets, List<ScenarioPayment> Payments, List<ScenarioMiningFee> MiningFees, string Name, int Rounds);
 
 public class ScenarioParser
 {
@@ -30,7 +31,6 @@ public class ScenarioParser
 	
 	public ScenarioConfig? Parse(string path)
 	{
-		
 		if (!File.Exists(path))
 		{
 			Errors.Add($"Config file not found: {path}");
@@ -42,9 +42,9 @@ public class ScenarioParser
 		JsonElement root = doc.RootElement;
 		
 		string name = GetString(root, "name", "unknown", Requirement.OptionalWarning, "root");
-		int blocks = GetInt(root, "blocks", 0, Requirement.OptionalWarning, "root");
-		int rounds = GetInt(root, "rounds", 0, Requirement.OptionalWarning, "root");
-		int defaultAnonScoreTarget = GetInt(root, "default_anon_score_target", KeyManager.DefaultAnonScoreTarget, Requirement.OptionalWarning, "root");
+		int blocks = (int)GetLong(root, "blocks", 0, Requirement.OptionalWarning, "root");
+		int rounds = (int)GetLong(root, "rounds", 0, Requirement.OptionalWarning, "root");
+		int defaultAnonScoreTarget = (int)GetLong(root, "default_anon_score_target", KeyManager.DefaultAnonScoreTarget, Requirement.OptionalWarning, "root");
 		bool defaultRedcoinIsolation = GetBool(root, "default_redcoin_isolation", KeyManager.DefaultRedCoinIsolation, Requirement.OptionalWarning, "root");
 		
 		ScenarioBackend? backend = new ScenarioBackend(null, null, null, null, null);
@@ -56,20 +56,29 @@ public class ScenarioParser
 			wallets = ParseWallets(walletsElement, defaultAnonScoreTarget, defaultRedcoinIsolation);
 		else 
 			Errors.Add($"root: property 'wallets' not specified");
+			
+		List<ScenarioPayment> payments = [];
+		if (root.TryGetProperty("payments", out JsonElement paymentsElement) && paymentsElement.ValueKind == JsonValueKind.Array)
+			payments = ParsePayments(paymentsElement);
 		
+		List<ScenarioMiningFee> miningFees = [];
+		if (root.TryGetProperty("mining_fees", out JsonElement feesElement) && feesElement.ValueKind == JsonValueKind.Array)
+			miningFees = ParseMiningFees(feesElement);
+			
 		return new ScenarioConfig(
 			Backend: backend,
 			Wallets: wallets,
 			Name: name,
-			Rounds: rounds > 0 ? rounds : blocks);
+			Rounds: rounds > 0 ? rounds : blocks,
+			Payments: payments,
+			MiningFees: miningFees);
 	}
 	
 	private ScenarioBackend ParseBackend(JsonElement element)
 	{
 		string? coordinatorIdentifier = GetString(element, nameof(ScenarioBackend.CoordinatorIdentifier), null, Requirement.OptionalNoWarning, "backend");
-		int? maxInputCountByRound = GetIntNullable(element, nameof(ScenarioBackend.MaxInputCountByRound), Requirement.OptionalNoWarning, "backend");
+		int? maxInputCountByRound = (int?)GetLongNullable(element, nameof(ScenarioBackend.MaxInputCountByRound), Requirement.OptionalNoWarning, "backend");
 		double? minInputCountByRoundMultiplier = GetDoubleNullable(element, nameof(ScenarioBackend.MinInputCountByRoundMultiplier), Requirement.OptionalNoWarning, "backend");
-		// TODO: Maybe decimals?
 		double? minRegistrableAmountD = GetDoubleNullable(element, nameof(ScenarioBackend.MinRegistrableAmount), Requirement.OptionalNoWarning, "backend");
 		double? maxRegistrableAmountD = GetDoubleNullable(element, nameof(ScenarioBackend.MaxRegistrableAmount), Requirement.OptionalNoWarning, "backend");
 		Money? minRegistrableAmount = minRegistrableAmountD is not null ? new Money(
@@ -99,15 +108,15 @@ public class ScenarioParser
 				i++;
 				continue;
 			}
-			int anonScoreTarget = GetInt(element, "anon_score_target", defaultAnonScoreTarget, Requirement.OptionalNoWarning, ctx);
+			int anonScoreTarget = (int)GetLong(element, "anon_score_target", defaultAnonScoreTarget, Requirement.OptionalNoWarning, ctx);
 			bool redcoinIsolation = GetBool(element, "redcoin_isolation", defaultRedcoinIsolation, Requirement.OptionalNoWarning, ctx);
 			
-			int stopBlocks = GetInt(element, "stop_blocks", 0, Requirement.OptionalNoWarning, ctx);
-			int stopRounds = GetInt(element, "stop_rounds", 0, Requirement.OptionalNoWarning, ctx);
+			int stopBlocks = (int)GetLong(element, "stop_blocks", 0, Requirement.OptionalNoWarning, ctx);
+			int stopRounds = (int)GetLong(element, "stop_rounds", 0, Requirement.OptionalNoWarning, ctx);
 			int stop = stopRounds != 0 ? stopRounds : stopBlocks;
 			
-			int delayBlocks = GetInt(element, "delay_blocks", 0, Requirement.OptionalNoWarning, ctx);
-			int delayRounds = GetInt(element, "delay_blocks", 0, Requirement.OptionalNoWarning, ctx);
+			int delayBlocks = (int)GetLong(element, "delay_blocks", 0, Requirement.OptionalNoWarning, ctx);
+			int delayRounds = (int)GetLong(element, "delay_blocks", 0, Requirement.OptionalNoWarning, ctx);
 			int delay = delayRounds != 0 ? delayRounds : delayBlocks;
 			
 			List<ScenarioFund> funds;
@@ -127,6 +136,52 @@ public class ScenarioParser
 		return wallets;
 	}
 	
+	private List<ScenarioPayment> ParsePayments(JsonElement array)
+	{
+		List<ScenarioPayment> payments = [];
+		
+		int i = 0;
+		foreach (JsonElement element in array.EnumerateArray())
+		{
+			string ctx = $"payments[{i}]";
+			if (element.ValueKind != JsonValueKind.Object)
+			{
+				Errors.Add($"{ctx}: expected object, got {element.ValueKind}");
+				i++;
+				continue;
+			}
+			long value = GetLong(element, "value", 0, Requirement.Required, ctx);
+			int senderWalletIx = (int)GetLong(element, "sender_wallet_ix", -1, Requirement.Required, ctx);
+			int receiverWalletIx = (int)GetLong(element, "receiver_wallet_ix", -1, Requirement.Required, ctx);
+			int delayRounds = (int)GetLong(element, "delay_rounds", 0, Requirement.OptionalNoWarning, ctx);
+			
+			payments.Add(new ScenarioPayment(value, senderWalletIx, receiverWalletIx, delayRounds));
+		}
+		return payments;
+	}
+	
+	private List<ScenarioMiningFee> ParseMiningFees(JsonElement array) 
+	{
+		List<ScenarioMiningFee> miningFees = [];
+		
+		int i = 0;
+		foreach (JsonElement element in array.EnumerateArray()) 
+		{
+			string ctx = $"mining_fees[{i}]";
+			if (element.ValueKind != JsonValueKind.Object)
+			{
+				Errors.Add($"{ctx}: expected object, got {element.ValueKind}");
+				i++;
+				continue;
+			}
+			decimal value = GetDecimal(element, "value", 0m, Requirement.Required, ctx);
+			int delayRounds = (int)GetLong(element, "delay_rounds", 0, Requirement.Required, ctx);
+			
+			miningFees.Add(new ScenarioMiningFee(value, delayRounds));
+		}
+		return miningFees;
+	}
+	
 	private List<ScenarioFund> ParseFunds(JsonElement array, int defaultDelay, string ctx)
 	{
 		List<ScenarioFund> funds = [];
@@ -136,13 +191,13 @@ public class ScenarioParser
 		{
 			if (element.ValueKind == JsonValueKind.Number) 
 			{
-				funds.Add(new ScenarioFund(element.GetInt32(), defaultDelay));
+				funds.Add(new ScenarioFund(element.GetInt64(), defaultDelay));
 			}
 			else if (element.ValueKind == JsonValueKind.Object)
 			{
-				int satoshis = GetInt(element, "value", 0, Requirement.Required, $"{ctx}.fund[{i}]");
-				int? delayBlocks = GetIntNullable(element, "delay_blocks", Requirement.OptionalNoWarning, $"{ctx}.fund[{i}]");
-				int? delayRounds = GetIntNullable(element, "delay_rounds", Requirement.OptionalNoWarning, $"{ctx}.fund[{i}]");
+				long satoshis = GetLong(element, "value", 0, Requirement.Required, $"{ctx}.fund[{i}]");
+				int? delayBlocks = (int?)GetLongNullable(element, "delay_blocks", Requirement.OptionalNoWarning, $"{ctx}.fund[{i}]");
+				int? delayRounds = (int?)GetLongNullable(element, "delay_rounds", Requirement.OptionalNoWarning, $"{ctx}.fund[{i}]");
 				
 				int delay = defaultDelay;
 				if (delayRounds is not null)      delay = (int)delayRounds;
@@ -175,7 +230,7 @@ public class ScenarioParser
 		return value.GetString()!;
 	}
 	
-	private int? GetIntNullable(JsonElement element, string name, Requirement requirement, string ctx)
+	private long? GetLongNullable(JsonElement element, string name, Requirement requirement, string ctx)
 	{
 		if (!element.TryGetProperty(name, out JsonElement value))
 		{
@@ -193,9 +248,9 @@ public class ScenarioParser
 		return n;
 	}
 	
-	private int GetInt(JsonElement element, string name, int defaultValue, Requirement requirement, string ctx)
+	private long GetLong(JsonElement element, string name, int defaultValue, Requirement requirement, string ctx)
 	{
-		int? n = GetIntNullable(element, name, Requirement.OptionalNoWarning, ctx);
+		long? n = GetLongNullable(element, name, Requirement.OptionalNoWarning, ctx);
 		if (n is null) {
 			n = defaultValue;
 			if (requirement == Requirement.Required)
@@ -205,7 +260,7 @@ public class ScenarioParser
 		}
 		return (int)n;
 	}
-	
+		
 	private double? GetDoubleNullable(JsonElement element, string name, Requirement requirement, string ctx)
 	{
 		if (!element.TryGetProperty(name, out JsonElement value))
@@ -220,6 +275,24 @@ public class ScenarioParser
 		{
 			Errors.Add($"{ctx}: '{name}' expected double, got {value.ValueKind}");
 			return null;
+		}
+		return n;
+	}
+	
+	private decimal GetDecimal(JsonElement element, string name, decimal defaultValue, Requirement requirement, string ctx)
+	{
+		if (!element.TryGetProperty(name, out JsonElement value))
+		{
+			if (requirement == Requirement.Required)
+				Errors.Add($"{ctx}: missing required property '{name}'");
+			else if (requirement == Requirement.OptionalWarning)
+				Warnings.Add($"{ctx}: missing property '{name}', defaulting to {defaultValue}");
+			return defaultValue;
+		}
+		if (!value.TryGetDecimal(out decimal n))
+		{
+			Errors.Add($"{ctx}: '{name}' expected decimal, got {value.ValueKind}");
+			return defaultValue;
 		}
 		return n;
 	}

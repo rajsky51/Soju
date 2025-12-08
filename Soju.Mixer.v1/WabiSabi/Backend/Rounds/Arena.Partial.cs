@@ -22,6 +22,7 @@ public partial class Arena : IWabiSabiApiRequestHandler
 		}
 		catch (Exception ex) when (IsUserCheating(ex))
 		{
+			Debug.Assert(false);
 			Logger.LogInfo($"{request.Input} is cheating: {ex.Message}");
 			// TODO: 
 			// _prison.CheatingDetected(request.Input, request.RoundId);
@@ -38,7 +39,7 @@ public partial class Arena : IWabiSabiApiRequestHandler
 		// Compute but don't commit updated coinjoin to round state, it will
 		// be re-calculated on input confirmation. This is computed in here
 		// for validation purposes.
-		_ = round.Assert<ConstructionState>().AddInput(coin, request.OwnershipProof, round.CoinJoinInputCommitmentData);
+		_ = round.Assert<ConstructionState>().AddInput(coin);
 
 		CheckCoinIsNotBanned(coin.Outpoint, round);
 		
@@ -65,7 +66,7 @@ public partial class Arena : IWabiSabiApiRequestHandler
 		// only that the probability of duplicates is very low).
 		var id = new Guid(SecureRandom.Instance.GetBytes(16));
 
-		var alice = new Alice(coin, request.OwnershipProof, round, id);
+		var alice = new Alice(coin, round, id);
 
 		if (alice.CalculateRemainingAmountCredentials(round.Parameters.MiningFeeRate) <= Money.Zero)
 		{
@@ -90,15 +91,10 @@ public partial class Arena : IWabiSabiApiRequestHandler
 		{
 			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.VsizeQuotaExceeded);
 		}
-		
-		var commitAmountCredentialResponse = round.AmountCredentialIssuer.HandleRequest(request.ZeroAmountCredentialRequests);
-		var commitVsizeCredentialResponse = round.VsizeCredentialIssuer.HandleRequest(request.ZeroVsizeCredentialRequests);
 
 		round.Alices.Add(alice);
 
-		return new(alice.Id,
-			commitAmountCredentialResponse,
-			commitVsizeCredentialResponse);
+		return new(alice.Id);
 	}
 
 	public void ReadyToSign(ReadyToSignRequestRequest request)
@@ -123,6 +119,7 @@ public partial class Arena : IWabiSabiApiRequestHandler
 		}
 		catch (Exception ex) when (IsUserCheating(ex))
 		{
+			Debug.Assert(false);
 			var round = GetRound(request.RoundId);
 			var alice = GetAlice(request.AliceId, round);
 			Logger.LogInfo($"{alice.Coin.Outpoint} is cheating: {ex.Message}");
@@ -136,50 +133,36 @@ public partial class Arena : IWabiSabiApiRequestHandler
 	{
 		Round round = GetRound(request.RoundId, Phase.ConnectionConfirmation);
 		Alice alice = GetAlice(request.AliceId, round);
-		var realAmountCredentialRequests = request.RealAmountCredentialRequests;
-		var realVsizeCredentialRequests = request.RealVsizeCredentialRequests;
+		long realAmountCredentialRequestDelta = request.RealAmountCredentialRequestDelta;
+		long realVsizeCredentialRequestDelta = request.RealVsizeCredentialRequestDelta;
 
 		if (alice.ConfirmedConnection)
 		{
 			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.AliceAlreadyConfirmedConnection, $"Round ({request.RoundId}): Alice ({request.AliceId}) already confirmed connection.");
 		}
 
-		if (realVsizeCredentialRequests.Delta != alice.CalculateRemainingVsizeCredentials(round.Parameters.MaxVsizeAllocationPerAlice))
+		if (realVsizeCredentialRequestDelta != alice.CalculateRemainingVsizeCredentials(round.Parameters.MaxVsizeAllocationPerAlice))
 		{
 			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.IncorrectRequestedVsizeCredentials, $"Round ({request.RoundId}): Incorrect requested vsize credentials.");
 		}
 
 		var remaining = alice.CalculateRemainingAmountCredentials(round.Parameters.MiningFeeRate);
-		if (realAmountCredentialRequests.Delta != remaining)
+		if (realAmountCredentialRequestDelta != remaining)
 		{
 			throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.IncorrectRequestedAmountCredentials, $"Round ({request.RoundId}): Incorrect requested amount credentials.");
 		}
-
-		CredentialsResponse amountZeroCredentialResponse = round.AmountCredentialIssuer.HandleRequest(request.ZeroAmountCredentialRequests);
-		CredentialsResponse vsizeZeroCredentialResponse = round.VsizeCredentialIssuer.HandleRequest(request.ZeroVsizeCredentialRequests);
-
 		
-		if (round.Phase == Phase.ConnectionConfirmation)
-		{
-			// If the phase was InputRegistration before then we did not pre-calculate real credentials.
-			CredentialsResponse amountRealCredentialResponse = round.AmountCredentialIssuer.HandleRequest(realAmountCredentialRequests);
-			CredentialsResponse vsizeRealCredentialResponse = round.VsizeCredentialIssuer.HandleRequest(realVsizeCredentialRequests);
+		Debug.Assert(round.Phase == Phase.ConnectionConfirmation);
+		
+		ConnectionConfirmationResponse response = new(
+			realAmountCredentialRequestDelta,
+			realVsizeCredentialRequestDelta);
 
-			ConnectionConfirmationResponse response = new(
-				amountZeroCredentialResponse,
-				vsizeZeroCredentialResponse,
-				amountRealCredentialResponse,
-				vsizeRealCredentialResponse);
-
-			// Update the coinjoin state, adding the confirmed input.
-			round.CoinjoinState = round.Assert<ConstructionState>().AddInput(alice.Coin, alice.OwnershipProof, round.CoinJoinInputCommitmentData);
-			alice.ConfirmedConnection = true;
-			return response;
-		}
-		else 
-		{
-			throw new WrongPhaseException(round, Phase.ConnectionConfirmation);
-		}
+		// Update the coinjoin state, adding the confirmed input.
+		round.CoinjoinState = round.Assert<ConstructionState>().AddInput(alice.Coin);
+		alice.ConfirmedConnection = true;
+		return response;
+		
 	}
 
 	public EmptyResponse RegisterOutput(OutputRegistrationRequest request)
@@ -229,11 +212,6 @@ public partial class Arena : IWabiSabiApiRequestHandler
 
 		// Update the current round state with the additional output to ensure it's valid.
 		var newState = round.AddOutput(new TxOut(outputValue, bob.Script));
-
-		// Verify the credential requests and prepare their responses.
-		// TODO: YOLO; anyways this shouldn't matter as clients don't cheat
-		// round.AmountCredentialIssuer.HandleRequest(request.AmountCredentialRequests);
-		// round.VsizeCredentialIssuer.HandleRequest(vsizeCredentialRequests);
 
 		// Update round state.
 		round.Bobs.Add(bob);

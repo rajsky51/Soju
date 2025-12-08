@@ -7,19 +7,17 @@ namespace Soju.WabiSabi.Backend.Models;
 
 public class Alice
 {
-	public Alice(Coin coin, OwnershipProof ownershipProof, Round round, Guid id)
+	public Alice(Coin coin, Round round, Guid id)
 	{
 		// TODO init syntax?
 		Round = round;
 		Coin = coin;
-		OwnershipProof = ownershipProof;
 		Id = id;
 	}
 
 	public Round Round { get; }
 	public Guid Id { get; }
 	public Coin Coin { get; }
-	public OwnershipProof OwnershipProof { get; }
 	public Money TotalInputAmount => Coin.Amount;
 	public int TotalInputVsize => Coin.ScriptPubKey.EstimateInputVsize();
 

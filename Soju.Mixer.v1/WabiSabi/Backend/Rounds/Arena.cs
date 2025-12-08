@@ -349,7 +349,6 @@ public partial class Arena
 	public void TimeoutRounds()
 	{
 		Round[] expiredRounds = Rounds.Where(x =>x.Phase == Phase.Ended).ToArray();
-		// Debug.Assert(expiredRounds.Length == 1);
 		foreach (var expiredRound in expiredRounds)
 		{
 			Rounds.Remove(expiredRound);

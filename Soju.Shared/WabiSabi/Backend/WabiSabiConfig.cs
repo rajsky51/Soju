@@ -9,7 +9,6 @@ using Soju.JsonConverters.Bitcoin;
 namespace Soju.WabiSabi.Backend;
 
 [JsonObject(MemberSerialization.OptIn)]
-// TODO: Later check this, but we shouldn't need to inherit from ConfigBase
 public class WabiSabiConfig : ConfigBase
 {
 	public WabiSabiConfig() : base()
