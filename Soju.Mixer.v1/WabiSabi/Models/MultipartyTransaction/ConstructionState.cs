@@ -1,6 +1,5 @@
 using NBitcoin;
 using System.Linq;
-using Soju.Crypto;
 using Soju.Extensions;
 using Soju.WabiSabi.Backend.Models;
 using Soju.WabiSabi.Backend.Rounds;

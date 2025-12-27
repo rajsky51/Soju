@@ -38,7 +38,6 @@ public class TransactionProcessor
 	public CoinsRegistry Coins { get; }
 	private readonly BlockchainAnalyzer _blockchainAnalyzer;
 	public Money DustThreshold { get; }
-	// private readonly MempoolService? _mempoolService;
 
 	public IEnumerable<ProcessedResult> Process(IEnumerable<SmartTransaction> txs)
 	{

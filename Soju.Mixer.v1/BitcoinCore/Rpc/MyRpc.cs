@@ -52,7 +52,7 @@ public class MyRpc : IRPCClient
 		return null;
 	}
 	
-	// NOTE: Should only ever be used if we know the 
+	// NOTE: Should only ever be used if we know the transaction exists
 	public Transaction GetRawTransaction(uint256 txid, bool throwIfNotFound = true)
 	{
 		if (Transactions.TryGetValue(txid, out Transaction tx))

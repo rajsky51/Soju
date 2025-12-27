@@ -20,8 +20,7 @@ public partial class Arena
 		WabiSabiConfig config,
 		IRPCClient rpc,
 		RoundParameterFactory roundParameterFactory,
-		CoinJoinScriptStore? coinJoinScriptStore = null
-		)
+		CoinJoinScriptStore? coinJoinScriptStore = null)
 	{
 		_config = config;
 		Rpc = rpc;

@@ -64,7 +64,7 @@ public class SmartTransaction : IEquatable<SmartTransaction>
 	#endregion Constructors
 
 	#region Members
-	
+
 	public long[] OutputValues => _outputValues.Value;
 	public bool IsWasabi2Cj => _isWasabi2Cj.Value;
 

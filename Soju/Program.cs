@@ -3,8 +3,10 @@ using Soju.Blockchain.Keys;
 
 string scenarioFilePath = "test_scenario.json";
 
-int defaultAnonScoreTarget = KeyManager.DefaultAnonScoreTarget;
-bool defaultRedCoinIsolation = KeyManager.DefaultRedCoinIsolation;
+// int defaultAnonScoreTarget = KeyManager.DefaultAnonScoreTarget;
+// bool defaultRedCoinIsolation = KeyManager.DefaultRedCoinIsolation;
+int defaultAnonScoreTarget = 5;
+bool defaultRedCoinIsolation = false;
 
 ScenarioParser parser = new(defaultAnonScoreTarget, defaultRedCoinIsolation);
 ScenarioConfig? scenario = parser.Parse(scenarioFilePath);

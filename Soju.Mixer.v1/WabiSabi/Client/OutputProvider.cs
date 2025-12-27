@@ -7,7 +7,7 @@ using Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
 
 namespace Soju.WabiSabi.Client;
 
-public class OutputProvider : IOutputProvider
+public class OutputProvider
 {
 	public OutputProvider(IDestinationProvider destinationProvider, WasabiRandom? random = null)
 	{

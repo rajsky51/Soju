@@ -15,10 +15,6 @@ public enum CoinjoinError
 	OnlyExcludedCoinsAvailable,
 	UneconomicalRound,
 	RandomlySkippedRound,
-	CoordinationFeeRateTooHigh,
 	MiningFeeRateTooHigh,
-	MinInputCountTooLow,
-	
-	// NOTE: My additions
-	MinOutputAmountTooHigh,
+	MinInputCountTooLow
 }

@@ -241,7 +241,6 @@ public class KeyManager
 	public static KeyManager CreateNew(out Mnemonic mnemonic, string password, Network network, string walletName, string? filePath = null)
 	{
 		mnemonic = new Mnemonic(Wordlist.English, WordCount.Twelve);
-		Console.WriteLine($"Mnemonic finish '{walletName}'"); // DEBUG
 		return CreateNew(mnemonic, password, network, walletName, filePath);
 	}
 
@@ -780,8 +779,7 @@ public class KeyManager
 	private static HdPubKey CreateHdPubKey((KeyPath KeyPath, ExtPubKey ExtPubKey) x) =>
 		new(x.ExtPubKey.PubKey, x.KeyPath, LabelsArray.Empty, KeyState.Clean);
 
-	// NOTE: Originally internal not public
-	public void SetExcludedCoinsFromCoinJoin(IEnumerable<OutPoint> excludedOutpoints)
+	internal void SetExcludedCoinsFromCoinJoin(IEnumerable<OutPoint> excludedOutpoints)
 	{
 		ExcludedCoinsFromCoinJoin = excludedOutpoints.ToList();
 		ToFile();

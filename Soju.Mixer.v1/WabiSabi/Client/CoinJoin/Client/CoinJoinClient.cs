@@ -17,7 +17,6 @@ using Soju.Models;
 using Soju.WabiSabi.Backend.Models;
 using Soju.WabiSabi.Backend.PostRequests;
 using Soju.WabiSabi.Backend.Rounds;
-using Soju.WabiSabi.Client.CredentialDependencies;
 using Soju.WabiSabi.Client.StatusChangedEvents;
 using Soju.WabiSabi.Models;
 using Soju.WabiSabi.Models.MultipartyTransaction;
@@ -213,16 +212,10 @@ public class CoinJoinClient
 		
 		// NOTE: The successful requests were already removed in the loop
 		List<SmartCoin> notRegisteredCoins = this.PendingInputRegistrationRequests.Values.Select(requestData => requestData.Coin).ToList();
-		foreach (SmartCoin coin in notRegisteredCoins)
-		{
-			coin.CoinJoinInProgress = false;
-		}
 		this.PendingInputRegistrationRequests.Clear();
 		
 		return new InputRegistrationResponseHandlingResult(alices, notRegisteredCoins);
 	}
-	
-	public record ConnectionConfirmationRequestData(ConnectionConfirmationRequest Request, AliceClient AliceClient, long RealAmountCredsRequest, long RealVsizeCredsRequest);
 	
 	// TODO: Why do we need alices as a parameter? Wouldn't it be better to just store alices?
 	public List<ConnectionConfirmationRequestWithId> CreateConnectionConfirmationRequests(List<AliceClient> alices)
@@ -262,8 +255,8 @@ public class CoinJoinClient
 			ConnectionConfirmationRequestData requestData = this.PendingConnectionConfirmationRequests[id];
 			
 			AliceClient aliceClient = requestData.AliceClient;
-			aliceClient.RealAmountCredentialsValue = response.RealAmountCredentials;
-			aliceClient.RealVsizeCredentialsValue = response.RealVsizeCredentials;
+			aliceClient.IssuedAmountCredentialsValue = response.RealAmountCredentials;
+			aliceClient.IssuedVsizeCredentialsValue = response.RealVsizeCredentials;
 			
 			alices.Add(aliceClient);
 			PendingConnectionConfirmationRequests.Remove(id);
@@ -280,7 +273,7 @@ public class CoinJoinClient
 		
 		IEnumerable<Coin> registeredCoins = registeredAliceClients.Select(alice => alice.SmartCoin.Coin);
 		
-		List<long> availableVsizes = registeredAliceClients.Select(alice => alice.RealVsizeCredentialsValue).ToList();
+		List<long> availableVsizes = registeredAliceClients.Select(alice => alice.IssuedVsizeCredentialsValue).ToList();
 		foreach (long vsize in availableVsizes) Debug.Assert(vsize > 0);
 		
 		ConstructionState constructionState = roundState.Assert<ConstructionState>();
@@ -379,6 +372,9 @@ public record InputRegistrationRequestWithId(InputRegistrationRequest Request, G
 public record InputRegistrationResponseWithId(InputRegistrationResponse Response, Guid Id);
 
 public record InputRegistrationResponseHandlingResult(List<AliceClient> AliceClients, List<SmartCoin> NotRegisteredCoins);
+
+// NOTE: Record to use when handling connection confirmation response
+public record ConnectionConfirmationRequestData(ConnectionConfirmationRequest Request, AliceClient AliceClient, long RealAmountCredsRequest, long RealVsizeCredsRequest);
 
 // TODO: The same as with InputRegistrationRequestWithId
 public record ConnectionConfirmationRequestWithId(ConnectionConfirmationRequest Request, Guid Id);

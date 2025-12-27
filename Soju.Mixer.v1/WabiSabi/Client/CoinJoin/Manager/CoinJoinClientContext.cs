@@ -4,7 +4,6 @@ using Soju.Blockchain.TransactionOutputs;
 using Soju.Helpers;
 using Soju.Wallets;
 using Soju.WabiSabi.Client.CoinJoin.Client;
-using Soju.WabiSabi.Client.CredentialDependencies;
 using Soju.WabiSabi.Client.StatusChangedEvents;
 using Soju.WabiSabi.Models;
 
@@ -18,7 +17,6 @@ public class CoinJoinClientContext
 	
 	public ImmutableArray<AliceClient> RegisteredAliceClients;
 	public ImmutableArray<TxOut> WantedOutputs;
-	public DependencyGraph Graph;
 	
 	public CoinJoinClientContext(
 		Wallet wallet,

@@ -1,10 +1,8 @@
-using NBitcoin;
 using Soju.Blockchain.TransactionOutputs;
 using Soju.Blockchain.Transactions;
 using Soju.Models;
 using Soju.WabiSabi.Client;
 using Soju.WabiSabi.Client.Batching;
-using Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
 
 namespace Soju.Wallets;
 
@@ -21,7 +19,7 @@ public interface IWallet
 	IKeyChain? KeyChain { get; }
 
 	IDestinationProvider DestinationProvider { get; }
-	OutputProvider OutputProvider { get; }
+	OutputProvider OutputProvider => new(DestinationProvider);
 	PaymentBatch BatchedPayments => new();
 
 	int AnonScoreTarget { get; }

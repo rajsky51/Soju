@@ -20,7 +20,6 @@ using Soju.WabiSabi.Backend.Statistics;
 using Soju.WabiSabi.Client;
 using Soju.WabiSabi.Client.CoinJoin.Client;
 using Soju.WabiSabi.Client.CoinJoin.Client.Decomposer;
-using Soju.WabiSabi.Client.CredentialDependencies;
 using Soju.WabiSabi.Models;
 using Soju.Wallets;
 using WabiSabi.Crypto.Randomness;
@@ -179,7 +178,7 @@ public class  Mixer
 		Debug.Assert(roundState.Phase == Phase.OutputRegistration);
 		
 		sw.Restart();
-		foreach (CoinJoinClientContext cjCtx in cjCtxs.Values)
+		Parallel.ForEach(cjCtxs.Values, cjCtx =>
 		{
 			ImmutableArray<AliceClient> regAliceClients = cjCtx.RegisteredAliceClients;
 			
@@ -192,17 +191,20 @@ public class  Mixer
 				cjCtx.WantedOutputs = []; // TODO: Hack
 				Logger.LogWarning(ex);
 			}
-		}
+		});
 		sw.Stop();
 		Console.WriteLine($"Choosing outputs took {sw.ElapsedMilliseconds} ms");
 		
 		List<OutputRegistrationRequest> outputRegRequests = [];
 		// NOTE: Output registration
+		sw.Restart();
 		foreach (CoinJoinClientContext cjCtx in cjCtxs.Values)
 		{
 			OutputRegistrationRequest[] requests = cjCtx.CoinJoinClient.CreateOutputRegistrationRequests(roundState, cjCtx.WantedOutputs);
 			outputRegRequests.AddRange(requests);
 		}
+		sw.Stop();
+		Console.WriteLine($"Creating output requests took {sw.ElapsedMilliseconds} ms");
 		
 		outputRegRequests.Shuffle(wrnd);
 		

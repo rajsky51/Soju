@@ -2,7 +2,6 @@ using NBitcoin;
 using System.Diagnostics;
 using WabiSabi.Crypto;
 using WabiSabi.Crypto.Randomness;
-using Soju.Crypto;
 using Soju.WabiSabi.Backend.Models;
 using Soju.WabiSabi.Crypto;
 using Soju.WabiSabi.Models.MultipartyTransaction;
@@ -68,8 +67,6 @@ public class Round
 
 	public RoundParameters Parameters { get; }
 	public Script CoordinatorScript { get; set; }
-
-	public CoinJoinInputCommitmentData CoinJoinInputCommitmentData => new (Parameters.CoordinationIdentifier, Id);
 
 	public TState Assert<TState>() where TState : MultipartyTransactionState =>
 		CoinjoinState switch

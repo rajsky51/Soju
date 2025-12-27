@@ -162,7 +162,6 @@ public partial class Arena : IWabiSabiApiRequestHandler
 		round.CoinjoinState = round.Assert<ConstructionState>().AddInput(alice.Coin);
 		alice.ConfirmedConnection = true;
 		return response;
-		
 	}
 
 	public EmptyResponse RegisterOutput(OutputRegistrationRequest request)
@@ -338,7 +337,8 @@ public partial class Arena : IWabiSabiApiRequestHandler
 	private Round GetRound(uint256 roundId, params Phase[] phases) =>
 		InPhase(GetRound(roundId), phases);
 	
-	// TODO: Probably rewrite this to make Alices be dictionary
+	// TODO: Probably rewrite this to make Alices be dictionary, this would depart
+	// from the og implementation though
 	private Alice GetAlice(Guid aliceId, Round round) =>
 		round.Alices.Find(x => x.Id == aliceId)
 		?? throw new WabiSabiProtocolException(WabiSabiProtocolErrorCode.AliceNotFound, $"Round ({round.Id}): Alice ({aliceId}) not found.");

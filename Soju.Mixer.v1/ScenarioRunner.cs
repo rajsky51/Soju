@@ -42,7 +42,7 @@ public class ScenarioRunner
 			wabiSabiConfig.CoordinatorIdentifier, 
 			Constants.DefaultMaxCoinJoinMiningFeeRate,
 			Constants.AbsoluteMinInputCount,
-			false); // NOTE: Not allowing solo coinjoining
+			AllowSoloCoinjoining: false);
 		
 		Dictionary<WalletId, CoinJoinClientManager> cjManagers = [];
 		

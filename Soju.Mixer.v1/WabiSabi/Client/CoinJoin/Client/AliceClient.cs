@@ -34,8 +34,8 @@ public class AliceClient
 	public uint256 RoundId { get; }
 	public SmartCoin SmartCoin { get; }
 	public readonly FeeRate FeeRate;
-	public long RealAmountCredentialsValue { get; set; }
-	public long RealVsizeCredentialsValue { get; set; }
+	public long IssuedAmountCredentialsValue { get; set; }
+	public long IssuedVsizeCredentialsValue { get; set; }
 	public readonly long MaxVsizeAllocationPerAlice;
 
 	public Money EffectiveValue => SmartCoin.EffectiveValue(FeeRate);
