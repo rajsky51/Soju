@@ -208,12 +208,10 @@ public class Mixer
 		
 		outputRegRequests.Shuffle(wrnd);
 		
-		
 		foreach (OutputRegistrationRequest request in outputRegRequests)
 		{
 			Arena.RegisterOutput(request);
 		}
-		
 		Arena.StepOutputRegistrationPhase();
 		Arena.SetRoundStates();
 		

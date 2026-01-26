@@ -58,6 +58,8 @@ public class Round
 	public List<Bob> Bobs { get; } = new();
 
 	public Phase Phase { get; private set; } = Phase.InputRegistration;
+	// NOTE: My addition; represents StartTime of InputRegistrationTimeFrame (used so there's some variable data for RoundId calculation)
+	// TODO: IMPORTANT: Change to DateTimeOffset in all versions
 	public DateTime InputRegistrationStartTime;
 	public DateTimeOffset End { get; private set; }
 	public EndRoundState EndRoundState { get; set; }

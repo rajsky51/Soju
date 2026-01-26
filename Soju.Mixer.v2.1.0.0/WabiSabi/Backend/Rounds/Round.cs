@@ -57,6 +57,7 @@ public class Round
 	public List<Bob> Bobs { get; } = new();
 
 	public Phase Phase { get; private set; } = Phase.InputRegistration;
+	// TTODO: Mixer.v1
 	public DateTime InputRegistrationStartTime;
 	public DateTimeOffset End { get; private set; }
 	public EndRoundState EndRoundState { get; set; }
