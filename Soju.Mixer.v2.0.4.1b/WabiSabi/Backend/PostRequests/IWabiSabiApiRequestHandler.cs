@@ -16,11 +16,11 @@ public interface IWabiSabiApiRequestHandler
 
 	void SignTransaction(TransactionSignaturesRequest request);
 	
-	// TODO: nocheckin Remove from other implementations
+	// TODO: Remove from other implementations
 	// ReissueCredentialResponse Reissuance(ReissueCredentialRequest request);
 
 	RoundStateResponse GetStatus(RoundStateRequest request);
 	
-	// TODO: nocheckin Remove from other implementations
+	// TODO: Remove from other implementations
 	// void ReadyToSign(ReadyToSignRequestRequest request);
 }

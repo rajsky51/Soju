@@ -35,8 +35,7 @@ public class  Mixer
 	public Mixer(
 		CoinJoinClientManager[] cjManagers, 
 		WabiSabiConfig config, 
-		IRPCClient rpc
-		)
+		IRPCClient rpc)
 	{
 		Arena = new Arena(config, rpc, new RoundParameterFactory(config, rpc.Network));
 		CJManagers = cjManagers;

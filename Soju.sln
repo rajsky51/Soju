@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Soju.Mixer.v2.1.0.0", "Soju
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Soju.Mixer.v2.0.4.1b", "Soju.Mixer.v2.0.4.1b\Soju.Mixer.v2.0.4.1b.csproj", "{16EF2367-F66B-45A3-8581-066CDC64B01F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Soju.Mixer.v2.6.0", "Soju.Mixer.v2.6.0\Soju.Mixer.v2.6.0.csproj", "{D998ADCE-A276-4CCD-8991-3BC3B1D99576}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -56,5 +58,9 @@ Global
 		{16EF2367-F66B-45A3-8581-066CDC64B01F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{16EF2367-F66B-45A3-8581-066CDC64B01F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{16EF2367-F66B-45A3-8581-066CDC64B01F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D998ADCE-A276-4CCD-8991-3BC3B1D99576}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D998ADCE-A276-4CCD-8991-3BC3B1D99576}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D998ADCE-A276-4CCD-8991-3BC3B1D99576}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D998ADCE-A276-4CCD-8991-3BC3B1D99576}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
