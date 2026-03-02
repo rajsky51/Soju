@@ -41,7 +41,7 @@ public class Round
 		AmountCredentialIssuerParameters = AmountCredentialIssuer.CredentialIssuerSecretKey.ComputeCredentialIssuerParameters();
 		VsizeCredentialIssuerParameters = VsizeCredentialIssuer.CredentialIssuerSecretKey.ComputeCredentialIssuerParameters();
 		
-		InputRegistrationStartTime = DateTime.UtcNow;
+		InputRegistrationStartTime = DateTimeOffset.Now;
 
 		_id = new Lazy<uint256>(CalculateHash);
 	}
@@ -59,8 +59,7 @@ public class Round
 
 	public Phase Phase { get; private set; } = Phase.InputRegistration;
 	// NOTE: My addition; represents StartTime of InputRegistrationTimeFrame (used so there's some variable data for RoundId calculation)
-	// TODO: IMPORTANT: Change to DateTimeOffset in all versions
-	public DateTime InputRegistrationStartTime;
+	public DateTimeOffset InputRegistrationStartTime;
 	public DateTimeOffset End { get; private set; }
 	public EndRoundState EndRoundState { get; set; }
 	public int RemainingInputVsizeAllocation => Parameters.InitialInputVsizeAllocation - (InputCount * Parameters.MaxVsizeAllocationPerAlice);

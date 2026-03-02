@@ -38,6 +38,8 @@ public class Round
 		VsizeCredentialIssuer = new(new(random), random, Parameters.MaxVsizeCredentialValue);
 		AmountCredentialIssuerParameters = AmountCredentialIssuer.CredentialIssuerSecretKey.ComputeCredentialIssuerParameters();
 		VsizeCredentialIssuerParameters = VsizeCredentialIssuer.CredentialIssuerSecretKey.ComputeCredentialIssuerParameters();
+		
+		InputRegistrationStartTime = DateTimeOffset.Now;
 
 		Id = CalculateHash();
 	}
@@ -54,8 +56,8 @@ public class Round
 	public List<Bob> Bobs { get; } = new();
 
 	public Phase Phase { get; private set; } = Phase.InputRegistration;
-	// TODO: Mixer.v1
-	public DateTime InputRegistrationStartTime;
+	// NOTE: My addition; represents StartTime of InputRegistrationTimeFrame (used so there's some variable data for RoundId calculation)
+	public DateTimeOffset InputRegistrationStartTime;
 	public DateTimeOffset End { get; private set; }
 	public EndRoundState EndRoundState { get; set; }
 	public int RemainingInputVsizeAllocation => Parameters.InitialInputVsizeAllocation - (InputCount * Parameters.MaxVsizeAllocationPerAlice);
