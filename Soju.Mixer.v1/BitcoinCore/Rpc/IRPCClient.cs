@@ -11,7 +11,7 @@ public interface IRPCClient
 	
 	GetTxOutResponse? GetTxOut(uint256 txid, int index);
 	
-	Transaction GetRawTransaction(uint256 txid, bool throwIfNotFound = true);
+	Transaction GetRawTransaction(uint256 txid);
 	
 	FeeRate GetCurrentMiningFeeRate();
 	void SetCurrentMiningFeeRate(FeeRate feeRate);

@@ -92,6 +92,9 @@ public class CoinJoinClient
 			throw new CoinJoinClientException(CoinjoinError.MinInputCountTooLow, roundSkippedMessage);
 		}
 		// TODO: Redo this, because it uses time
+		// For now it behaves like CoinJoinSkipFactors.NoSkip
+		// The default in the KeyManager is SpeedMaximizing; the random skipping was 
+		// removed by 13657
 		// if (_skipFactors.ShouldSkipRoundRandomly(_secureRandom, roundParameters.MiningFeeRate, _roundStatusUpdater.CoinJoinFeeRateMedians, currentRoundState.Id))
 		// {
 		// 	string roundSkippedMessage = "Round skipped randomly for better privacy.";

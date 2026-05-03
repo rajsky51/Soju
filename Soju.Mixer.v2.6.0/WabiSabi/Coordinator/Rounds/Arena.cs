@@ -11,6 +11,7 @@ using NBitcoin.RPC;
 using Soju.Bases;
 using Soju.BitcoinRpc;
 using Soju.Crypto.Randomness;
+using Soju.Diagnostics;
 using Soju.Extensions;
 using Soju.Logging;
 using Soju.WabiSabi.Coordinator.Models;
@@ -69,9 +70,8 @@ public partial class Arena
 				List<Alice> offendingAlices = CheckTxoSpendStatus(round);
 				if (offendingAlices.Count != 0)
 				{
-					// TODO: Change this in other versions
-					Debug.Assert(false);
-					round.Alices.RemoveAll(x => offendingAlices.Contains(x));
+					Fail.Unreachable("There should never be any offending alices");
+					// round.Alices.RemoveAll(x => offendingAlices.Contains(x));
 				}
 				if (round.InputCount < round.Parameters.MinInputCountByRound)
 				{

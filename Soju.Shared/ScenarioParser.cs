@@ -1,5 +1,4 @@
 using System.Text.Json;
-using NBitcoin;
 
 namespace Soju;
 
@@ -9,11 +8,11 @@ public record ScenarioMiningFee(decimal SatoshisPerByte, int DelayRounds);
 public record ScenarioWallet(List<ScenarioFund> Funds, int AnonScoreTarget, bool RedCoinIsolation, int StopRounds);
 public record ScenarioBackend
 (
-	string? CoordinatorIdentifier,
+	string CoordinatorIdentifier,
 	int?    MaxInputCountByRound,
 	double? MinInputCountByRoundMultiplier,
-	Money?  MinRegistrableAmount,
-	Money?  MaxRegistrableAmount
+	long?  MinRegistrableAmountSats,
+	long?  MaxRegistrableAmountSats
 );
 public record ScenarioConfig(ScenarioBackend Backend, List<ScenarioWallet> Wallets, List<ScenarioPayment> Payments, List<ScenarioMiningFee> MiningFees, string Name, int Rounds);
 
@@ -52,9 +51,9 @@ public class ScenarioParser
 		int defaultAnonScoreTarget = (int)GetLong(root, "default_anon_score_target", DefaultAnonScoreTarget, Requirement.OptionalWarning, "root");
 		bool defaultRedcoinIsolation = GetBool(root, "default_redcoin_isolation", DefaultRedCoinIsolation, Requirement.OptionalWarning, "root");
 		
-		ScenarioBackend? backend = new ScenarioBackend(null, null, null, null, null);
+		ScenarioBackend backend = new ScenarioBackend("CoinJoinCoordinatorIdentifier", null, null, null, null);
 		if (root.TryGetProperty("backend", out JsonElement backendElement) && backendElement.ValueKind == JsonValueKind.Object) 
-			backend = ParseBackend(backendElement);
+			backend = ParseBackend(backendElement, backend.CoordinatorIdentifier);
 		
 		List<ScenarioWallet> wallets = []; 
 		if (root.TryGetProperty("wallets", out JsonElement walletsElement) && walletsElement.ValueKind == JsonValueKind.Array) 
@@ -79,24 +78,23 @@ public class ScenarioParser
 			MiningFees: miningFees);
 	}
 	
-	private ScenarioBackend ParseBackend(JsonElement element)
+	// TODO: ScenarioBackend shouldn't have nullable fields, and we should just supply it with values we obtain from the specific version
+	private ScenarioBackend ParseBackend(JsonElement element, string defaultCoordinatorIdentifier)
 	{
-		string? coordinatorIdentifier = GetString(element, nameof(ScenarioBackend.CoordinatorIdentifier), null, Requirement.OptionalNoWarning, "backend");
+		string coordinatorIdentifier = GetString(element, nameof(ScenarioBackend.CoordinatorIdentifier), defaultCoordinatorIdentifier, Requirement.OptionalNoWarning, "backend");
 		int? maxInputCountByRound = (int?)GetLongNullable(element, nameof(ScenarioBackend.MaxInputCountByRound), Requirement.OptionalNoWarning, "backend");
 		double? minInputCountByRoundMultiplier = GetDoubleNullable(element, nameof(ScenarioBackend.MinInputCountByRoundMultiplier), Requirement.OptionalNoWarning, "backend");
-		double? minRegistrableAmountD = GetDoubleNullable(element, nameof(ScenarioBackend.MinRegistrableAmount), Requirement.OptionalNoWarning, "backend");
-		double? maxRegistrableAmountD = GetDoubleNullable(element, nameof(ScenarioBackend.MaxRegistrableAmount), Requirement.OptionalNoWarning, "backend");
-		Money? minRegistrableAmount = minRegistrableAmountD is not null ? new Money(
-			(decimal)minRegistrableAmountD, MoneyUnit.BTC) : null;
-		Money? maxRegistrableAmount = maxRegistrableAmountD is not null ? new Money(
-			(decimal)maxRegistrableAmountD, MoneyUnit.BTC) : null;
+		double? minRegistrableAmountD = GetDoubleNullable(element, nameof(ScenarioBackend.MinRegistrableAmountSats), Requirement.OptionalNoWarning, "backend");
+		double? maxRegistrableAmountD = GetDoubleNullable(element, nameof(ScenarioBackend.MaxRegistrableAmountSats), Requirement.OptionalNoWarning, "backend");
+		long? minRegistrableAmountSats = minRegistrableAmountD is not null ? (long)(minRegistrableAmountD * 100_000_000) : null;
+		long ?maxRegistrableAmountSats = maxRegistrableAmountD is not null ? (long)(maxRegistrableAmountD * 100_000_000) : null;
 		
 		return new ScenarioBackend(
 			CoordinatorIdentifier: coordinatorIdentifier,
 			MaxInputCountByRound: maxInputCountByRound,
 			MinInputCountByRoundMultiplier: minInputCountByRoundMultiplier,
-			MinRegistrableAmount: minRegistrableAmount,
-			MaxRegistrableAmount: maxRegistrableAmount);
+			MinRegistrableAmountSats: minRegistrableAmountSats,
+			MaxRegistrableAmountSats: maxRegistrableAmountSats);
 	}
 	
 	private List<ScenarioWallet> ParseWallets(JsonElement array, int defaultAnonScoreTarget, bool defaultRedcoinIsolation)

@@ -8,6 +8,7 @@ using Soju.WabiSabi.Backend.Models;
 using Soju.WabiSabi.Models.MultipartyTransaction;
 using Soju.WabiSabi.Backend.Statistics;
 using System.Collections.Immutable;
+using Soju.Diagnostics;
 using Soju.WabiSabi.Models;
 using Soju.Extensions;
 using Soju.Logging;
@@ -64,7 +65,8 @@ public partial class Arena
 				List<Alice> offendingAlices = CheckTxoSpendStatus(round);
 				if (offendingAlices.Count != 0)
 				{
-					round.Alices.RemoveAll(x => offendingAlices.Contains(x));
+					Fail.Unreachable("There should never be any offending alices");
+					// round.Alices.RemoveAll(x => offendingAlices.Contains(x));
 				}
 				if (round.InputCount < round.Parameters.MinInputCountByRound)
 				{

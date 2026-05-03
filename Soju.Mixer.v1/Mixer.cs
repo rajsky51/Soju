@@ -54,12 +54,12 @@ public class  Mixer
 			CoinJoinClientContext cjCtx = cjManager.CreateCoinJoinClientCtx();
 			cjCtxs[cjCtx.WalletId] = cjCtx;
 		}
-				
+		
 		Arena.CreateRound();
 		Arena.SetRoundStates();
 		
 		Debug.Assert(Arena.RoundStates.Count == 1);
-				
+		
 		RoundState roundState = Arena.RoundStates[0];
 		Debug.Assert(roundState.Phase == Phase.InputRegistration);
 		
@@ -75,8 +75,8 @@ public class  Mixer
 				List<InputRegistrationRequestWithId> requests = cjCtx.CoinJoinClient.CreateInputRegistrationRequests(coins, roundState);
 				
 				inputRequestBag.Add((cjCtx.WalletId, requests));
-			} 
-			catch (Exception ex)
+			}
+			catch (CoinJoinClientException ex)
 			{
 				Logger.LogWarning(ex);
 			}
@@ -185,7 +185,8 @@ public class  Mixer
 			{
 				cjCtx.WantedOutputs = cjCtx.CoinJoinClient.CreateOutputs(roundState, regAliceClients);
 			}
-			catch (Exception ex)
+			catch (InvalidOperationException ex ) when (ex.Message == 
+				"Not enough coins registered to participate in the coinjoin.")
 			{
 				cjCtx.WantedOutputs = []; // TODO: Hack
 				Logger.LogWarning(ex);

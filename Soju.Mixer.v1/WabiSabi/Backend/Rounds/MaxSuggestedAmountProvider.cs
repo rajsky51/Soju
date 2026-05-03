@@ -70,22 +70,22 @@ public class MaxSuggestedAmountProvider
 
 	public void StepMaxSuggested(Round round, bool isInputRegistrationSuccessful)
 	{
-		// TODO: The orginal code under, doesn't do well with our step based coinjoining, so let's do this hack
+		// TODO: The original code under, doesn't do well with our step based coinjoining, so let's do this hack
 		// In the mixer we can check if input registration was successful and then choose all the coins again,
 		// but I believe this way is better
 		MaxSuggestedAmount = Config.MaxRegistrableAmount;
 		return;
 		
-		if (!isInputRegistrationSuccessful)
-		{
-			// We will keep this on the maximum - let everyone join.
-			MaxSuggestedAmount = Config.MaxRegistrableAmount;
-			return;
-		}
-
-		// Alter the value.
-		Counter++;
-
-		MaxSuggestedAmount = GetMaxSuggestedAmount();
+		// if (!isInputRegistrationSuccessful)
+		// {
+		// 	// We will keep this on the maximum - let everyone join.
+		// 	MaxSuggestedAmount = Config.MaxRegistrableAmount;
+		// 	return;
+		// }
+		//
+		// // Alter the value.
+		// Counter++;
+		//
+		// MaxSuggestedAmount = GetMaxSuggestedAmount();
 	}
 }
