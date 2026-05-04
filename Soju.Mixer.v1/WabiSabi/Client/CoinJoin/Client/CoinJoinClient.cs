@@ -65,14 +65,24 @@ public class CoinJoinClient
 	// NOTE: My additions
 	public Dictionary<Guid, InputRegistrationRequestData> PendingInputRegistrationRequests;
 	public Dictionary<Guid, ConnectionConfirmationRequestData> PendingConnectionConfirmationRequests;
-
+	
+	// TODO: Both IsRoundEconomic and ShouldSkipRoundRandomly are commented out.
+	// Decide what to do.
+	// The coordinator always selects the round's mining fee rate according to what is stored in MyRpcClient. And I don't
+	// see a sane way of deciding what the mining fee rate for different time frames (day, week, month) would be other than
+	// the current mining fee as we don't simulate time in the simulator.
+	// So ShouldSkipRoundRandomly would always return false.
+	// Furthermore, the TimeFrame used for IsRoundEconomic is zero, which is the default value.
+	// So IsRoundEconomic would always return true.
+	// ShouldSkipRoundRandomly was removed by PR 13657, IsRoundEconomic effectively by PR 13844.
+	// From what I understand the client trusted the coordinator with the fee rate median time frames, so it wouldn't
+	// prevent an attack from a malicious coordinator.
 	public IEnumerable<SmartCoin> StartCoinJoin(RoundState currentRoundState, IEnumerable<SmartCoin> coinCandidates)
 	{	
 		Debug.Assert(coinCandidates.Any());
 
 		RoundParameters roundParameters = currentRoundState.CoinjoinState.Parameters;
 		
-		// TODO:
 		// if (!IsRoundEconomic(roundParameters.MiningFeeRate, _roundStatusUpdater.CoinJoinFeeRateMedians, _feeRateMedianTimeFrame))
 		// {
 		// 	string roundSkippedMessage = "Uneconomical round skipped.";
@@ -91,10 +101,6 @@ public class CoinJoinClient
 			currentRoundState.LogInfo(roundSkippedMessage);
 			throw new CoinJoinClientException(CoinjoinError.MinInputCountTooLow, roundSkippedMessage);
 		}
-		// TODO: Redo this, because it uses time
-		// For now it behaves like CoinJoinSkipFactors.NoSkip
-		// The default in the KeyManager is SpeedMaximizing; the random skipping was 
-		// removed by 13657
 		// if (_skipFactors.ShouldSkipRoundRandomly(_secureRandom, roundParameters.MiningFeeRate, _roundStatusUpdater.CoinJoinFeeRateMedians, currentRoundState.Id))
 		// {
 		// 	string roundSkippedMessage = "Round skipped randomly for better privacy.";
